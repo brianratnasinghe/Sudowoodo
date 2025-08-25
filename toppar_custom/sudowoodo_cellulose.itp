@@ -1,0 +1,868 @@
+;;;;;; Sudowoodo
+;
+; Description:
+;   Mesoscale FF for Cellulose
+; Parameterization:
+;
+;
+#define k_bond 10000
+#define k_theta 826.3
+
+[moleculetype]
+; molname      nrexcl
+  Cell         1
+
+[atoms]
+; id    type    resnr   residu  atom    cgnr    charge
+  1    C        1      Cell    C1    1    0
+  2    C        1      Cell    C2    2    0
+  3    C        1      Cell    C3    3    0
+  4    C        1      Cell    C4    4    0
+  5    C        1      Cell    C5    5    0
+  6    C        1      Cell    C6    6    0
+  7    C        1      Cell    C7    7    0
+  8    C        1      Cell    C8    8    0
+  9    C        1      Cell    C9    9    0
+  10   C        1      Cell    C10   10   0
+  11   C        1      Cell    C11   11   0
+  12   C        1      Cell    C12   12   0
+  13   C        1      Cell    C13   13   0
+  14   C        1      Cell    C14   14   0
+  15   C        1      Cell    C15   15   0
+  16   C        1      Cell    C16   16   0
+  17   C        1      Cell    C17   17   0
+  18   C        1      Cell    C18   18   0
+  19   C        1      Cell    C19   19   0
+  20   C        1      Cell    C20   20   0
+  21   C        1      Cell    C21   21   0
+  22   C        1      Cell    C22   22   0
+  23   C        1      Cell    C23   23   0
+  24   C        1      Cell    C24   24   0
+  25   C        1      Cell    C25   25   0
+  26   C        1      Cell    C26   26   0
+  27   C        1      Cell    C27   27   0
+  28   C        1      Cell    C28   28   0
+  29   C        1      Cell    C29   29   0
+  30   C        1      Cell    C30   30   0
+  31   C        1      Cell    C31   31   0
+  32   C        1      Cell    C32   32   0
+  33   C        1      Cell    C33   33   0
+  34   C        1      Cell    C34   34   0
+  35   C        1      Cell    C35   35   0
+  36   C        1      Cell    C36   36   0
+  37   C        1      Cell    C37   37   0
+  38   C        1      Cell    C38   38   0
+  39   C        1      Cell    C39   39   0
+  40   C        1      Cell    C40   40   0
+  41   C        1      Cell    C41   41   0
+  42   C        1      Cell    C42   42   0
+  43   C        1      Cell    C43   43   0
+  44   C        1      Cell    C44   44   0
+  45   C        1      Cell    C45   45   0
+  46   C        1      Cell    C46   46   0
+  47   C        1      Cell    C47   47   0
+  48   C        1      Cell    C48   48   0
+  49   C        1      Cell    C49   49   0
+  50   C        1      Cell    C50   50   0
+  51   C        1      Cell    C51   51   0
+  52   C        1      Cell    C52   52   0
+  53   C        1      Cell    C53   53   0
+  54   C        1      Cell    C54   54   0
+  55   C        1      Cell    C55   55   0
+  56   C        1      Cell    C56   56   0
+  57   C        1      Cell    C57   57   0
+  58   C        1      Cell    C58   58   0
+  59   C        1      Cell    C59   59   0
+  60   C        1      Cell    C60   60   0
+  61   C        1      Cell    C61   61   0
+  62   C        1      Cell    C62   62   0
+  63   C        1      Cell    C63   63   0
+  64   C        1      Cell    C64   64   0
+  65   C        1      Cell    C65   65   0
+  66   C        1      Cell    C66   66   0
+  67   C        1      Cell    C67   67   0
+  68   C        1      Cell    C68   68   0
+  69   C        1      Cell    C69   69   0
+  70   C        1      Cell    C70   70   0
+  71   C        1      Cell    C71   71   0
+  72   C        1      Cell    C72   72   0
+  73   C        1      Cell    C73   73   0
+  74   C        1      Cell    C74   74   0
+  75   C        1      Cell    C75   75   0
+  76   C        1      Cell    C76   76   0
+  77   C        1      Cell    C77   77   0
+  78   C        1      Cell    C78   78   0
+  79   C        1      Cell    C79   79   0
+  80   C        1      Cell    C80   80   0
+  81   C        1      Cell    C81   81   0
+  82   C        1      Cell    C82   82   0
+  83   C        1      Cell    C83   83   0
+  84   C        1      Cell    C84   84   0
+  85   C        1      Cell    C85   85   0
+  86   C        1      Cell    C86   86   0
+  87   C        1      Cell    C87   87   0
+  88   C        1      Cell    C88   88   0
+  89   C        1      Cell    C89   89   0
+  90   C        1      Cell    C90   90   0
+  91   C        1      Cell    C91   91   0
+  92   C        1      Cell    C92   92   0
+  93   C        1      Cell    C93   93   0
+  94   C        1      Cell    C94   94   0
+  95   C        1      Cell    C95   95   0
+  96   C        1      Cell    C96   96   0
+  97   C        1      Cell    C97   97   0
+  98   C        1      Cell    C98   98   0
+  99   C        1      Cell    C99   99   0
+  100  C        1      Cell    C100  100  0
+  101  C        1      Cell    C101  101  0
+  102  C        1      Cell    C102  102  0
+  103  C        1      Cell    C103  103  0
+  104  C        1      Cell    C104  104  0
+  105  C        1      Cell    C105  105  0
+  106  C        1      Cell    C106  106  0
+  107  C        1      Cell    C107  107  0
+  108  C        1      Cell    C108  108  0
+  109  C        1      Cell    C109  109  0
+  110  C        1      Cell    C110  110  0
+  111  C        1      Cell    C111  111  0
+  112  C        1      Cell    C112  112  0
+  113  C        1      Cell    C113  113  0
+  114  C        1      Cell    C114  114  0
+  115  C        1      Cell    C115  115  0
+  116  C        1      Cell    C116  116  0
+  117  C        1      Cell    C117  117  0
+  118  C        1      Cell    C118  118  0
+  119  C        1      Cell    C119  119  0
+  120  C        1      Cell    C120  120  0
+  121  C        1      Cell    C121  121  0
+  122  C        1      Cell    C122  122  0
+  123  C        1      Cell    C123  123  0
+  124  C        1      Cell    C124  124  0
+  125  C        1      Cell    C125  125  0
+  126  C        1      Cell    C126  126  0
+  127  C        1      Cell    C127  127  0
+  128  C        1      Cell    C128  128  0
+  129  C        1      Cell    C129  129  0
+  130  C        1      Cell    C130  130  0
+  131  C        1      Cell    C131  131  0
+  132  C        1      Cell    C132  132  0
+  133  C        1      Cell    C133  133  0
+  134  C        1      Cell    C134  134  0
+  135  C        1      Cell    C135  135  0
+  136  C        1      Cell    C136  136  0
+  137  C        1      Cell    C137  137  0
+  138  C        1      Cell    C138  138  0
+  139  C        1      Cell    C139  139  0
+  140  C        1      Cell    C140  140  0
+  141  C        1      Cell    C141  141  0
+  142  C        1      Cell    C142  142  0
+  143  C        1      Cell    C143  143  0
+  144  C        1      Cell    C144  144  0
+  145  C        1      Cell    C145  145  0
+  146  C        1      Cell    C146  146  0
+  147  C        1      Cell    C147  147  0
+  148  C        1      Cell    C148  148  0
+  149  C        1      Cell    C149  149  0
+  150  C        1      Cell    C150  150  0
+  151  C        1      Cell    C151  151  0
+  152  C        1      Cell    C152  152  0
+  153  C        1      Cell    C153  153  0
+  154  C        1      Cell    C154  154  0
+  155  C        1      Cell    C155  155  0
+  156  C        1      Cell    C156  156  0
+  157  C        1      Cell    C157  157  0
+  158  C        1      Cell    C158  158  0
+  159  C        1      Cell    C159  159  0
+  160  C        1      Cell    C160  160  0
+  161  C        1      Cell    C161  161  0
+  162  C        1      Cell    C162  162  0
+  163  C        1      Cell    C163  163  0
+  164  C        1      Cell    C164  164  0
+  165  C        1      Cell    C165  165  0
+  166  C        1      Cell    C166  166  0
+  167  C        1      Cell    C167  167  0
+  168  C        1      Cell    C168  168  0
+  169  C        1      Cell    C169  169  0
+  170  C        1      Cell    C170  170  0
+  171  C        1      Cell    C171  171  0
+  172  C        1      Cell    C172  172  0
+  173  C        1      Cell    C173  173  0
+  174  C        1      Cell    C174  174  0
+  175  C        1      Cell    C175  175  0
+  176  C        1      Cell    C176  176  0
+  177  C        1      Cell    C177  177  0
+  178  C        1      Cell    C178  178  0
+  179  C        1      Cell    C179  179  0
+  180  C        1      Cell    C180  180  0
+  181  C        1      Cell    C181  181  0
+  182  C        1      Cell    C182  182  0
+  183  C        1      Cell    C183  183  0
+  184  C        1      Cell    C184  184  0
+  185  C        1      Cell    C185  185  0
+  186  C        1      Cell    C186  186  0
+  187  C        1      Cell    C187  187  0
+  188  C        1      Cell    C188  188  0
+  189  C        1      Cell    C189  189  0
+  190  C        1      Cell    C190  190  0
+  191  C        1      Cell    C191  191  0
+  192  C        1      Cell    C192  192  0
+  193  C        1      Cell    C193  193  0
+  194  C        1      Cell    C194  194  0
+  195  C        1      Cell    C195  195  0
+  196  C        1      Cell    C196  196  0
+  197  C        1      Cell    C197  197  0
+  198  C        1      Cell    C198  198  0
+  199  C        1      Cell    C199  199  0
+  200  C        1      Cell    C200  200  0
+  201  C        1      Cell    C201  201  0
+  202  C        1      Cell    C202  202  0
+  203  C        1      Cell    C203  203  0
+  204  C        1      Cell    C204  204  0
+  205  C        1      Cell    C205  205  0
+  206  C        1      Cell    C206  206  0
+  207  C        1      Cell    C207  207  0
+  208  C        1      Cell    C208  208  0
+  209  C        1      Cell    C209  209  0
+  210  C        1      Cell    C210  210  0
+  211  C        1      Cell    C211  211  0
+  212  C        1      Cell    C212  212  0
+  213  C        1      Cell    C213  213  0
+  214  C        1      Cell    C214  214  0
+  215  C        1      Cell    C215  215  0
+  216  C        1      Cell    C216  216  0
+  217  C        1      Cell    C217  217  0
+  218  C        1      Cell    C218  218  0
+  219  C        1      Cell    C219  219  0
+  220  C        1      Cell    C220  220  0
+  221  C        1      Cell    C221  221  0
+  222  C        1      Cell    C222  222  0
+  223  C        1      Cell    C223  223  0
+  224  C        1      Cell    C224  224  0
+  225  C        1      Cell    C225  225  0
+  226  C        1      Cell    C226  226  0
+  227  C        1      Cell    C227  227  0
+  228  C        1      Cell    C228  228  0
+  229  C        1      Cell    C229  229  0
+  230  C        1      Cell    C230  230  0
+  231  C        1      Cell    C231  231  0
+  232  C        1      Cell    C232  232  0
+  233  C        1      Cell    C233  233  0
+  234  C        1      Cell    C234  234  0
+  235  C        1      Cell    C235  235  0
+  236  C        1      Cell    C236  236  0
+  237  C        1      Cell    C237  237  0
+  238  C        1      Cell    C238  238  0
+  239  C        1      Cell    C239  239  0
+  240  C        1      Cell    C240  240  0
+  241  C        1      Cell    C241  241  0
+  242  C        1      Cell    C242  242  0
+  243  C        1      Cell    C243  243  0
+  244  C        1      Cell    C244  244  0
+  245  C        1      Cell    C245  245  0
+  246  C        1      Cell    C246  246  0
+  247  C        1      Cell    C247  247  0
+  248  C        1      Cell    C248  248  0
+  249  C        1      Cell    C249  249  0
+  250  C        1      Cell    C250  250  0
+  251  C        1      Cell    C251  251  0
+  252  C        1      Cell    C252  252  0
+  253  C        1      Cell    C253  253  0
+  254  C        1      Cell    C254  254  0
+  255  C        1      Cell    C255  255  0
+  256  C        1      Cell    C256  256  0
+  257  C        1      Cell    C257  257  0
+  258  C        1      Cell    C258  258  0
+  259  C        1      Cell    C259  259  0
+  260  C        1      Cell    C260  260  0
+  261  C        1      Cell    C261  261  0
+  262  C        1      Cell    C262  262  0
+  263  C        1      Cell    C263  263  0
+  264  C        1      Cell    C264  264  0
+  265  C        1      Cell    C265  265  0
+  266  C        1      Cell    C266  266  0
+  267  C        1      Cell    C267  267  0
+  268  C        1      Cell    C268  268  0
+  269  C        1      Cell    C269  269  0
+  270  C        1      Cell    C270  270  0
+  271  C        1      Cell    C271  271  0
+  272  C        1      Cell    C272  272  0
+  273  C        1      Cell    C273  273  0
+  274  C        1      Cell    C274  274  0
+  275  C        1      Cell    C275  275  0
+  276  C        1      Cell    C276  276  0
+  277  C        1      Cell    C277  277  0
+  278  C        1      Cell    C278  278  0
+  279  C        1      Cell    C279  279  0
+  280  C        1      Cell    C280  280  0
+  281  C        1      Cell    C281  281  0
+  282  C        1      Cell    C282  282  0
+  283  C        1      Cell    C283  283  0
+
+[bonds]
+;  i    j      funct   length  force.c.
+  1    2    1       3.01    k_bond
+  2    3    1       3.01    k_bond
+  3    4    1       3.01    k_bond
+  4    5    1       3.01    k_bond
+  5    6    1       3.01    k_bond
+  6    7    1       3.01    k_bond
+  7    8    1       3.01    k_bond
+  8    9    1       3.01    k_bond
+  9    10   1       3.01    k_bond
+  10   11   1       3.01    k_bond
+  11   12   1       3.01    k_bond
+  12   13   1       3.01    k_bond
+  13   14   1       3.01    k_bond
+  14   15   1       3.01    k_bond
+  15   16   1       3.01    k_bond
+  16   17   1       3.01    k_bond
+  17   18   1       3.01    k_bond
+  18   19   1       3.01    k_bond
+  19   20   1       3.01    k_bond
+  20   21   1       3.01    k_bond
+  21   22   1       3.01    k_bond
+  22   23   1       3.01    k_bond
+  23   24   1       3.01    k_bond
+  24   25   1       3.01    k_bond
+  25   26   1       3.01    k_bond
+  26   27   1       3.01    k_bond
+  27   28   1       3.01    k_bond
+  28   29   1       3.01    k_bond
+  29   30   1       3.01    k_bond
+  30   31   1       3.01    k_bond
+  31   32   1       3.01    k_bond
+  32   33   1       3.01    k_bond
+  33   34   1       3.01    k_bond
+  34   35   1       3.01    k_bond
+  35   36   1       3.01    k_bond
+  36   37   1       3.01    k_bond
+  37   38   1       3.01    k_bond
+  38   39   1       3.01    k_bond
+  39   40   1       3.01    k_bond
+  40   41   1       3.01    k_bond
+  41   42   1       3.01    k_bond
+  42   43   1       3.01    k_bond
+  43   44   1       3.01    k_bond
+  44   45   1       3.01    k_bond
+  45   46   1       3.01    k_bond
+  46   47   1       3.01    k_bond
+  47   48   1       3.01    k_bond
+  48   49   1       3.01    k_bond
+  49   50   1       3.01    k_bond
+  50   51   1       3.01    k_bond
+  51   52   1       3.01    k_bond
+  52   53   1       3.01    k_bond
+  53   54   1       3.01    k_bond
+  54   55   1       3.01    k_bond
+  55   56   1       3.01    k_bond
+  56   57   1       3.01    k_bond
+  57   58   1       3.01    k_bond
+  58   59   1       3.01    k_bond
+  59   60   1       3.01    k_bond
+  60   61   1       3.01    k_bond
+  61   62   1       3.01    k_bond
+  62   63   1       3.01    k_bond
+  63   64   1       3.01    k_bond
+  64   65   1       3.01    k_bond
+  65   66   1       3.01    k_bond
+  66   67   1       3.01    k_bond
+  67   68   1       3.01    k_bond
+  68   69   1       3.01    k_bond
+  69   70   1       3.01    k_bond
+  70   71   1       3.01    k_bond
+  71   72   1       3.01    k_bond
+  72   73   1       3.01    k_bond
+  73   74   1       3.01    k_bond
+  74   75   1       3.01    k_bond
+  75   76   1       3.01    k_bond
+  76   77   1       3.01    k_bond
+  77   78   1       3.01    k_bond
+  78   79   1       3.01    k_bond
+  79   80   1       3.01    k_bond
+  80   81   1       3.01    k_bond
+  81   82   1       3.01    k_bond
+  82   83   1       3.01    k_bond
+  83   84   1       3.01    k_bond
+  84   85   1       3.01    k_bond
+  85   86   1       3.01    k_bond
+  86   87   1       3.01    k_bond
+  87   88   1       3.01    k_bond
+  88   89   1       3.01    k_bond
+  89   90   1       3.01    k_bond
+  90   91   1       3.01    k_bond
+  91   92   1       3.01    k_bond
+  92   93   1       3.01    k_bond
+  93   94   1       3.01    k_bond
+  94   95   1       3.01    k_bond
+  95   96   1       3.01    k_bond
+  96   97   1       3.01    k_bond
+  97   98   1       3.01    k_bond
+  98   99   1       3.01    k_bond
+  99   100  1       3.01    k_bond
+  100  101  1       3.01    k_bond
+  101  102  1       3.01    k_bond
+  102  103  1       3.01    k_bond
+  103  104  1       3.01    k_bond
+  104  105  1       3.01    k_bond
+  105  106  1       3.01    k_bond
+  106  107  1       3.01    k_bond
+  107  108  1       3.01    k_bond
+  108  109  1       3.01    k_bond
+  109  110  1       3.01    k_bond
+  110  111  1       3.01    k_bond
+  111  112  1       3.01    k_bond
+  112  113  1       3.01    k_bond
+  113  114  1       3.01    k_bond
+  114  115  1       3.01    k_bond
+  115  116  1       3.01    k_bond
+  116  117  1       3.01    k_bond
+  117  118  1       3.01    k_bond
+  118  119  1       3.01    k_bond
+  119  120  1       3.01    k_bond
+  120  121  1       3.01    k_bond
+  121  122  1       3.01    k_bond
+  122  123  1       3.01    k_bond
+  123  124  1       3.01    k_bond
+  124  125  1       3.01    k_bond
+  125  126  1       3.01    k_bond
+  126  127  1       3.01    k_bond
+  127  128  1       3.01    k_bond
+  128  129  1       3.01    k_bond
+  129  130  1       3.01    k_bond
+  130  131  1       3.01    k_bond
+  131  132  1       3.01    k_bond
+  132  133  1       3.01    k_bond
+  133  134  1       3.01    k_bond
+  134  135  1       3.01    k_bond
+  135  136  1       3.01    k_bond
+  136  137  1       3.01    k_bond
+  137  138  1       3.01    k_bond
+  138  139  1       3.01    k_bond
+  139  140  1       3.01    k_bond
+  140  141  1       3.01    k_bond
+  141  142  1       3.01    k_bond
+  142  143  1       3.01    k_bond
+  143  144  1       3.01    k_bond
+  144  145  1       3.01    k_bond
+  145  146  1       3.01    k_bond
+  146  147  1       3.01    k_bond
+  147  148  1       3.01    k_bond
+  148  149  1       3.01    k_bond
+  149  150  1       3.01    k_bond
+  150  151  1       3.01    k_bond
+  151  152  1       3.01    k_bond
+  152  153  1       3.01    k_bond
+  153  154  1       3.01    k_bond
+  154  155  1       3.01    k_bond
+  155  156  1       3.01    k_bond
+  156  157  1       3.01    k_bond
+  157  158  1       3.01    k_bond
+  158  159  1       3.01    k_bond
+  159  160  1       3.01    k_bond
+  160  161  1       3.01    k_bond
+  161  162  1       3.01    k_bond
+  162  163  1       3.01    k_bond
+  163  164  1       3.01    k_bond
+  164  165  1       3.01    k_bond
+  165  166  1       3.01    k_bond
+  166  167  1       3.01    k_bond
+  167  168  1       3.01    k_bond
+  168  169  1       3.01    k_bond
+  169  170  1       3.01    k_bond
+  170  171  1       3.01    k_bond
+  171  172  1       3.01    k_bond
+  172  173  1       3.01    k_bond
+  173  174  1       3.01    k_bond
+  174  175  1       3.01    k_bond
+  175  176  1       3.01    k_bond
+  176  177  1       3.01    k_bond
+  177  178  1       3.01    k_bond
+  178  179  1       3.01    k_bond
+  179  180  1       3.01    k_bond
+  180  181  1       3.01    k_bond
+  181  182  1       3.01    k_bond
+  182  183  1       3.01    k_bond
+  183  184  1       3.01    k_bond
+  184  185  1       3.01    k_bond
+  185  186  1       3.01    k_bond
+  186  187  1       3.01    k_bond
+  187  188  1       3.01    k_bond
+  188  189  1       3.01    k_bond
+  189  190  1       3.01    k_bond
+  190  191  1       3.01    k_bond
+  191  192  1       3.01    k_bond
+  192  193  1       3.01    k_bond
+  193  194  1       3.01    k_bond
+  194  195  1       3.01    k_bond
+  195  196  1       3.01    k_bond
+  196  197  1       3.01    k_bond
+  197  198  1       3.01    k_bond
+  198  199  1       3.01    k_bond
+  199  200  1       3.01    k_bond
+  200  201  1       3.01    k_bond
+  201  202  1       3.01    k_bond
+  202  203  1       3.01    k_bond
+  203  204  1       3.01    k_bond
+  204  205  1       3.01    k_bond
+  205  206  1       3.01    k_bond
+  206  207  1       3.01    k_bond
+  207  208  1       3.01    k_bond
+  208  209  1       3.01    k_bond
+  209  210  1       3.01    k_bond
+  210  211  1       3.01    k_bond
+  211  212  1       3.01    k_bond
+  212  213  1       3.01    k_bond
+  213  214  1       3.01    k_bond
+  214  215  1       3.01    k_bond
+  215  216  1       3.01    k_bond
+  216  217  1       3.01    k_bond
+  217  218  1       3.01    k_bond
+  218  219  1       3.01    k_bond
+  219  220  1       3.01    k_bond
+  220  221  1       3.01    k_bond
+  221  222  1       3.01    k_bond
+  222  223  1       3.01    k_bond
+  223  224  1       3.01    k_bond
+  224  225  1       3.01    k_bond
+  225  226  1       3.01    k_bond
+  226  227  1       3.01    k_bond
+  227  228  1       3.01    k_bond
+  228  229  1       3.01    k_bond
+  229  230  1       3.01    k_bond
+  230  231  1       3.01    k_bond
+  231  232  1       3.01    k_bond
+  232  233  1       3.01    k_bond
+  233  234  1       3.01    k_bond
+  234  235  1       3.01    k_bond
+  235  236  1       3.01    k_bond
+  236  237  1       3.01    k_bond
+  237  238  1       3.01    k_bond
+  238  239  1       3.01    k_bond
+  239  240  1       3.01    k_bond
+  240  241  1       3.01    k_bond
+  241  242  1       3.01    k_bond
+  242  243  1       3.01    k_bond
+  243  244  1       3.01    k_bond
+  244  245  1       3.01    k_bond
+  245  246  1       3.01    k_bond
+  246  247  1       3.01    k_bond
+  247  248  1       3.01    k_bond
+  248  249  1       3.01    k_bond
+  249  250  1       3.01    k_bond
+  250  251  1       3.01    k_bond
+  251  252  1       3.01    k_bond
+  252  253  1       3.01    k_bond
+  253  254  1       3.01    k_bond
+  254  255  1       3.01    k_bond
+  255  256  1       3.01    k_bond
+  256  257  1       3.01    k_bond
+  257  258  1       3.01    k_bond
+  258  259  1       3.01    k_bond
+  259  260  1       3.01    k_bond
+  260  261  1       3.01    k_bond
+  261  262  1       3.01    k_bond
+  262  263  1       3.01    k_bond
+  263  264  1       3.01    k_bond
+  264  265  1       3.01    k_bond
+  265  266  1       3.01    k_bond
+  266  267  1       3.01    k_bond
+  267  268  1       3.01    k_bond
+  268  269  1       3.01    k_bond
+  269  270  1       3.01    k_bond
+  270  271  1       3.01    k_bond
+  271  272  1       3.01    k_bond
+  272  273  1       3.01    k_bond
+  273  274  1       3.01    k_bond
+  274  275  1       3.01    k_bond
+  275  276  1       3.01    k_bond
+  276  277  1       3.01    k_bond
+  277  278  1       3.01    k_bond
+  278  279  1       3.01    k_bond
+  279  280  1       3.01    k_bond
+  280  281  1       3.01    k_bond
+  281  282  1       3.01    k_bond
+  282  283  1       3.01    k_bond
+
+[angles]
+;  i    j    k      funct   angle   force.c.
+  1    2    3    2       180.0   k_theta
+  2    3    4    2       180.0   k_theta
+  3    4    5    2       180.0   k_theta
+  4    5    6    2       180.0   k_theta
+  5    6    7    2       180.0   k_theta
+  6    7    8    2       180.0   k_theta
+  7    8    9    2       180.0   k_theta
+  8    9    10   2       180.0   k_theta
+  9    10   11   2       180.0   k_theta
+  10   11   12   2       180.0   k_theta
+  11   12   13   2       180.0   k_theta
+  12   13   14   2       180.0   k_theta
+  13   14   15   2       180.0   k_theta
+  14   15   16   2       180.0   k_theta
+  15   16   17   2       180.0   k_theta
+  16   17   18   2       180.0   k_theta
+  17   18   19   2       180.0   k_theta
+  18   19   20   2       180.0   k_theta
+  19   20   21   2       180.0   k_theta
+  20   21   22   2       180.0   k_theta
+  21   22   23   2       180.0   k_theta
+  22   23   24   2       180.0   k_theta
+  23   24   25   2       180.0   k_theta
+  24   25   26   2       180.0   k_theta
+  25   26   27   2       180.0   k_theta
+  26   27   28   2       180.0   k_theta
+  27   28   29   2       180.0   k_theta
+  28   29   30   2       180.0   k_theta
+  29   30   31   2       180.0   k_theta
+  30   31   32   2       180.0   k_theta
+  31   32   33   2       180.0   k_theta
+  32   33   34   2       180.0   k_theta
+  33   34   35   2       180.0   k_theta
+  34   35   36   2       180.0   k_theta
+  35   36   37   2       180.0   k_theta
+  36   37   38   2       180.0   k_theta
+  37   38   39   2       180.0   k_theta
+  38   39   40   2       180.0   k_theta
+  39   40   41   2       180.0   k_theta
+  40   41   42   2       180.0   k_theta
+  41   42   43   2       180.0   k_theta
+  42   43   44   2       180.0   k_theta
+  43   44   45   2       180.0   k_theta
+  44   45   46   2       180.0   k_theta
+  45   46   47   2       180.0   k_theta
+  46   47   48   2       180.0   k_theta
+  47   48   49   2       180.0   k_theta
+  48   49   50   2       180.0   k_theta
+  49   50   51   2       180.0   k_theta
+  50   51   52   2       180.0   k_theta
+  51   52   53   2       180.0   k_theta
+  52   53   54   2       180.0   k_theta
+  53   54   55   2       180.0   k_theta
+  54   55   56   2       180.0   k_theta
+  55   56   57   2       180.0   k_theta
+  56   57   58   2       180.0   k_theta
+  57   58   59   2       180.0   k_theta
+  58   59   60   2       180.0   k_theta
+  59   60   61   2       180.0   k_theta
+  60   61   62   2       180.0   k_theta
+  61   62   63   2       180.0   k_theta
+  62   63   64   2       180.0   k_theta
+  63   64   65   2       180.0   k_theta
+  64   65   66   2       180.0   k_theta
+  65   66   67   2       180.0   k_theta
+  66   67   68   2       180.0   k_theta
+  67   68   69   2       180.0   k_theta
+  68   69   70   2       180.0   k_theta
+  69   70   71   2       180.0   k_theta
+  70   71   72   2       180.0   k_theta
+  71   72   73   2       180.0   k_theta
+  72   73   74   2       180.0   k_theta
+  73   74   75   2       180.0   k_theta
+  74   75   76   2       180.0   k_theta
+  75   76   77   2       180.0   k_theta
+  76   77   78   2       180.0   k_theta
+  77   78   79   2       180.0   k_theta
+  78   79   80   2       180.0   k_theta
+  79   80   81   2       180.0   k_theta
+  80   81   82   2       180.0   k_theta
+  81   82   83   2       180.0   k_theta
+  82   83   84   2       180.0   k_theta
+  83   84   85   2       180.0   k_theta
+  84   85   86   2       180.0   k_theta
+  85   86   87   2       180.0   k_theta
+  86   87   88   2       180.0   k_theta
+  87   88   89   2       180.0   k_theta
+  88   89   90   2       180.0   k_theta
+  89   90   91   2       180.0   k_theta
+  90   91   92   2       180.0   k_theta
+  91   92   93   2       180.0   k_theta
+  92   93   94   2       180.0   k_theta
+  93   94   95   2       180.0   k_theta
+  94   95   96   2       180.0   k_theta
+  95   96   97   2       180.0   k_theta
+  96   97   98   2       180.0   k_theta
+  97   98   99   2       180.0   k_theta
+  98   99   100  2       180.0   k_theta
+  99   100  101  2       180.0   k_theta
+  100  101  102  2       180.0   k_theta
+  101  102  103  2       180.0   k_theta
+  102  103  104  2       180.0   k_theta
+  103  104  105  2       180.0   k_theta
+  104  105  106  2       180.0   k_theta
+  105  106  107  2       180.0   k_theta
+  106  107  108  2       180.0   k_theta
+  107  108  109  2       180.0   k_theta
+  108  109  110  2       180.0   k_theta
+  109  110  111  2       180.0   k_theta
+  110  111  112  2       180.0   k_theta
+  111  112  113  2       180.0   k_theta
+  112  113  114  2       180.0   k_theta
+  113  114  115  2       180.0   k_theta
+  114  115  116  2       180.0   k_theta
+  115  116  117  2       180.0   k_theta
+  116  117  118  2       180.0   k_theta
+  117  118  119  2       180.0   k_theta
+  118  119  120  2       180.0   k_theta
+  119  120  121  2       180.0   k_theta
+  120  121  122  2       180.0   k_theta
+  121  122  123  2       180.0   k_theta
+  122  123  124  2       180.0   k_theta
+  123  124  125  2       180.0   k_theta
+  124  125  126  2       180.0   k_theta
+  125  126  127  2       180.0   k_theta
+  126  127  128  2       180.0   k_theta
+  127  128  129  2       180.0   k_theta
+  128  129  130  2       180.0   k_theta
+  129  130  131  2       180.0   k_theta
+  130  131  132  2       180.0   k_theta
+  131  132  133  2       180.0   k_theta
+  132  133  134  2       180.0   k_theta
+  133  134  135  2       180.0   k_theta
+  134  135  136  2       180.0   k_theta
+  135  136  137  2       180.0   k_theta
+  136  137  138  2       180.0   k_theta
+  137  138  139  2       180.0   k_theta
+  138  139  140  2       180.0   k_theta
+  139  140  141  2       180.0   k_theta
+  140  141  142  2       180.0   k_theta
+  141  142  143  2       180.0   k_theta
+  142  143  144  2       180.0   k_theta
+  143  144  145  2       180.0   k_theta
+  144  145  146  2       180.0   k_theta
+  145  146  147  2       180.0   k_theta
+  146  147  148  2       180.0   k_theta
+  147  148  149  2       180.0   k_theta
+  148  149  150  2       180.0   k_theta
+  149  150  151  2       180.0   k_theta
+  150  151  152  2       180.0   k_theta
+  151  152  153  2       180.0   k_theta
+  152  153  154  2       180.0   k_theta
+  153  154  155  2       180.0   k_theta
+  154  155  156  2       180.0   k_theta
+  155  156  157  2       180.0   k_theta
+  156  157  158  2       180.0   k_theta
+  157  158  159  2       180.0   k_theta
+  158  159  160  2       180.0   k_theta
+  159  160  161  2       180.0   k_theta
+  160  161  162  2       180.0   k_theta
+  161  162  163  2       180.0   k_theta
+  162  163  164  2       180.0   k_theta
+  163  164  165  2       180.0   k_theta
+  164  165  166  2       180.0   k_theta
+  165  166  167  2       180.0   k_theta
+  166  167  168  2       180.0   k_theta
+  167  168  169  2       180.0   k_theta
+  168  169  170  2       180.0   k_theta
+  169  170  171  2       180.0   k_theta
+  170  171  172  2       180.0   k_theta
+  171  172  173  2       180.0   k_theta
+  172  173  174  2       180.0   k_theta
+  173  174  175  2       180.0   k_theta
+  174  175  176  2       180.0   k_theta
+  175  176  177  2       180.0   k_theta
+  176  177  178  2       180.0   k_theta
+  177  178  179  2       180.0   k_theta
+  178  179  180  2       180.0   k_theta
+  179  180  181  2       180.0   k_theta
+  180  181  182  2       180.0   k_theta
+  181  182  183  2       180.0   k_theta
+  182  183  184  2       180.0   k_theta
+  183  184  185  2       180.0   k_theta
+  184  185  186  2       180.0   k_theta
+  185  186  187  2       180.0   k_theta
+  186  187  188  2       180.0   k_theta
+  187  188  189  2       180.0   k_theta
+  188  189  190  2       180.0   k_theta
+  189  190  191  2       180.0   k_theta
+  190  191  192  2       180.0   k_theta
+  191  192  193  2       180.0   k_theta
+  192  193  194  2       180.0   k_theta
+  193  194  195  2       180.0   k_theta
+  194  195  196  2       180.0   k_theta
+  195  196  197  2       180.0   k_theta
+  196  197  198  2       180.0   k_theta
+  197  198  199  2       180.0   k_theta
+  198  199  200  2       180.0   k_theta
+  199  200  201  2       180.0   k_theta
+  200  201  202  2       180.0   k_theta
+  201  202  203  2       180.0   k_theta
+  202  203  204  2       180.0   k_theta
+  203  204  205  2       180.0   k_theta
+  204  205  206  2       180.0   k_theta
+  205  206  207  2       180.0   k_theta
+  206  207  208  2       180.0   k_theta
+  207  208  209  2       180.0   k_theta
+  208  209  210  2       180.0   k_theta
+  209  210  211  2       180.0   k_theta
+  210  211  212  2       180.0   k_theta
+  211  212  213  2       180.0   k_theta
+  212  213  214  2       180.0   k_theta
+  213  214  215  2       180.0   k_theta
+  214  215  216  2       180.0   k_theta
+  215  216  217  2       180.0   k_theta
+  216  217  218  2       180.0   k_theta
+  217  218  219  2       180.0   k_theta
+  218  219  220  2       180.0   k_theta
+  219  220  221  2       180.0   k_theta
+  220  221  222  2       180.0   k_theta
+  221  222  223  2       180.0   k_theta
+  222  223  224  2       180.0   k_theta
+  223  224  225  2       180.0   k_theta
+  224  225  226  2       180.0   k_theta
+  225  226  227  2       180.0   k_theta
+  226  227  228  2       180.0   k_theta
+  227  228  229  2       180.0   k_theta
+  228  229  230  2       180.0   k_theta
+  229  230  231  2       180.0   k_theta
+  230  231  232  2       180.0   k_theta
+  231  232  233  2       180.0   k_theta
+  232  233  234  2       180.0   k_theta
+  233  234  235  2       180.0   k_theta
+  234  235  236  2       180.0   k_theta
+  235  236  237  2       180.0   k_theta
+  236  237  238  2       180.0   k_theta
+  237  238  239  2       180.0   k_theta
+  238  239  240  2       180.0   k_theta
+  239  240  241  2       180.0   k_theta
+  240  241  242  2       180.0   k_theta
+  241  242  243  2       180.0   k_theta
+  242  243  244  2       180.0   k_theta
+  243  244  245  2       180.0   k_theta
+  244  245  246  2       180.0   k_theta
+  245  246  247  2       180.0   k_theta
+  246  247  248  2       180.0   k_theta
+  247  248  249  2       180.0   k_theta
+  248  249  250  2       180.0   k_theta
+  249  250  251  2       180.0   k_theta
+  250  251  252  2       180.0   k_theta
+  251  252  253  2       180.0   k_theta
+  252  253  254  2       180.0   k_theta
+  253  254  255  2       180.0   k_theta
+  254  255  256  2       180.0   k_theta
+  255  256  257  2       180.0   k_theta
+  256  257  258  2       180.0   k_theta
+  257  258  259  2       180.0   k_theta
+  258  259  260  2       180.0   k_theta
+  259  260  261  2       180.0   k_theta
+  260  261  262  2       180.0   k_theta
+  261  262  263  2       180.0   k_theta
+  262  263  264  2       180.0   k_theta
+  263  264  265  2       180.0   k_theta
+  264  265  266  2       180.0   k_theta
+  265  266  267  2       180.0   k_theta
+  266  267  268  2       180.0   k_theta
+  267  268  269  2       180.0   k_theta
+  268  269  270  2       180.0   k_theta
+  269  270  271  2       180.0   k_theta
+  270  271  272  2       180.0   k_theta
+  271  272  273  2       180.0   k_theta
+  272  273  274  2       180.0   k_theta
+  273  274  275  2       180.0   k_theta
+  274  275  276  2       180.0   k_theta
+  275  276  277  2       180.0   k_theta
+  276  277  278  2       180.0   k_theta
+  277  278  279  2       180.0   k_theta
+  278  279  280  2       180.0   k_theta
+  279  280  281  2       180.0   k_theta
+  280  281  282  2       180.0   k_theta
+  281  282  283  2       180.0   k_theta

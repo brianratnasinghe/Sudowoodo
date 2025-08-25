@@ -1,0 +1,6 @@
+AFM-Build Sweep Run Log
+======================
+Output directory: run_1756109374
+Epsilon mapping: CC=10.0, CX=5.0, CP=2.5, XX=2.5, PX=2.5, PP=2.5
+Polymer counts: Xylo=458  Pctn=5501  Cell=146
+Seed used: 91262880

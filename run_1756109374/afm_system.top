@@ -1,0 +1,14 @@
+;;;;;; AFM-Based Combined Topology
+;
+#include "toppar_custom/sudowoodo_base.itp"
+#include "toppar_custom/sudowoodo_cell.itp"
+#include "toppar_custom/sudowoodo_xylo.itp"
+#include "toppar_custom/sudowoodo_pctn.itp"
+
+[ system ]
+AFM-Based Cell Wall System
+
+[molecules]
+Xylo       229
+Pctn       2750
+Cell       73

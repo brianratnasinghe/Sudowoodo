@@ -1,0 +1,28 @@
+;;;;; Sudowoodo Force Field: Particle definition and LJ interactions
+;;;;;
+;;;;; File updated on 2024-11-26 
+;;;;;
+;;;;; Version: 0.0.1
+;;;;;                                       
+;;;;; Please cite: 
+;;;;;
+
+#define sigma_PP   0.8
+#define epsilon_PP 0.8
+
+[ defaults ]  
+1 2 ; sigma-epsilon format of LJ parameters
+ 
+[ atomtypes ] 
+C 1 100.0 0.000 A 0.0 0.0
+X 1  50.0 0.000 A 0.0 0.0
+P 1  26.6 0.000 A 0.0 0.0
+ 
+[ nonbond_params ]
+;   i     j  func  sigma(nm)   epsilon(kJ/mol)
+C C 1 2.673 2.500000
+C X 1 2.087 2.500000
+C P 1 1.837 2.500000
+X X 1 1.5 2.500000
+X P 1 1.25 2.500000
+P P 1 1.0 2.500000
