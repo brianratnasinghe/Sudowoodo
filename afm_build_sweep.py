@@ -60,14 +60,20 @@ def parse_ktheta_values(ktheta_str):
     """
     Parse ktheta string into values for pectin, cellulose, xyloglucan.
     Returns dict with keys 'pectin', 'cellulose', 'xyloglucan' and float values or None for defaults.
+    Gracefully handles extra values by ignoring them.
     """
-    if not ktheta_str:
+    if not ktheta_str or not ktheta_str.strip():
         return {}
     
     # Split and clean values, handling up to 3 values
     parts = ktheta_str.split(',')
+    
+    # Warn about extra values but don't error
     if len(parts) > 3:
-        raise ValueError("ktheta accepts at most 3 values: pectin,cellulose,xyloglucan")
+        print(f"[warning] ktheta has {len(parts)} values but only first 3 (pectin,cellulose,xyloglucan) will be used")
+    
+    # Limit to first 3 parts, ignore any excess
+    parts = parts[:3]
     
     # Pad with empty strings if fewer than 3 values provided
     while len(parts) < 3:
