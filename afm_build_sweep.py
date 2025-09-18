@@ -3,6 +3,7 @@
 AFM cell wall builder tool with custom epsilon mapping.
 - Copies template .gro and .itp files.
 - Modifies sudowoodo_base.itp with user-specified epsilon for bead pairs.
+- Optionally updates ktheta values in pectin, cellulose, and xyloglucan .itp files.
 - Generates topology, .mdp files, run.sh, and afm_build.log.
 - Calls build_afm_system.py to create afm_system.gro in the output folder.
 
@@ -10,6 +11,7 @@ Usage:
   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
 Optional:
   --seed 123456
+  --ktheta 10.0    # Override angle force constant in all polymer .itp files
 """
 
 import argparse, shutil, os, re, random, textwrap, subprocess
@@ -21,6 +23,7 @@ def get_args():
     p.add_argument('--epsilon', type=str, required=True,
                    help="Comma-separated epsilon mapping, e.g. CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4")
     p.add_argument('--seed', type=int, help="Random seed (int). If not set, random seed is chosen and logged.")
+    p.add_argument('--ktheta', type=float, help="Override ktheta value in pectin, cellulose, and xyloglucan .itp files. If not provided, uses default values in each file.")
     p.add_argument('--nxylo', type=int, default=458)
     p.add_argument('--npctn', type=int, default=5501)
     p.add_argument('--ncell', type=int, default=146)
@@ -73,6 +76,27 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
             out.append(line)
     new_path.write_text('\n'.join(out) + '\n')
 
+def update_ktheta_in_itp(itp_path, new_path, ktheta_value):
+    """
+    Update the ktheta value in an ITP file by modifying the #define k_theta line.
+    
+    Args:
+        itp_path (Path): Path to the source ITP file
+        new_path (Path): Path to the output ITP file  
+        ktheta_value (float): New ktheta value to set
+    """
+    lines = itp_path.read_text().splitlines()
+    out = []
+    
+    for line in lines:
+        if line.strip().startswith('#define k_theta'):
+            # Replace the ktheta value while preserving the format
+            out.append(f"#define k_theta {ktheta_value}")
+        else:
+            out.append(line)
+    
+    new_path.write_text('\n'.join(out) + '\n')
+
 def randomize_structures(seed, out_dir):
     for src, dst in [
         ('X.gro', out_dir / 'X.gro'),
@@ -106,12 +130,21 @@ def generate_itps(args, out_dir, epsilon_map):
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)
     scale_epsilon_in_itp(Path('toppar_custom/sudowoodo_base.itp'), toppar_dir / "sudowoodo_base.itp", epsilon_map)
-    for src, dst in [
+    
+    # Process the three ITP files that can have ktheta updated
+    itp_files = [
         ('toppar_custom/sudowoodo_xyloglucan.itp', toppar_dir / "sudowoodo_xyloglucan.itp"),
         ('toppar_custom/sudowoodo_pectin.itp', toppar_dir / "sudowoodo_pectin.itp"),
         ('toppar_custom/sudowoodo_cellulose.itp', toppar_dir / "sudowoodo_cellulose.itp")
-    ]:
-        copy_file(src, dst)
+    ]
+    
+    for src, dst in itp_files:
+        if args.ktheta is not None:
+            # Update ktheta value if provided
+            update_ktheta_in_itp(Path(src), dst, args.ktheta)
+        else:
+            # Just copy the file as-is
+            copy_file(src, dst)
 
 def write_mdp_files(args, out_dir):
     def mdp_default_em():
@@ -232,19 +265,22 @@ def write_run_sh(args, out_dir):
 
 def write_log(out_dir, seed, args, epsilon_map):
     eps_map_str = ', '.join([f"{k[0]}{k[1]}={v}" for k,v in epsilon_map.items() if k[0]<=k[1]])
+    ktheta_str = f"ktheta={args.ktheta}" if args.ktheta is not None else "ktheta=default"
     log_txt = textwrap.dedent(f"""\
         AFM-Build Sweep Run Log
         ======================
         Output directory: {out_dir}
         Epsilon mapping: {eps_map_str}
+        Ktheta setting: {ktheta_str}
         Polymer counts: Xylo={args.nxylo}  Pctn={args.npctn}  Cell={args.ncell}
         Seed used: {seed}
     """)
     write_text(out_dir / "afm_build.log", log_txt)
 
-def build_afm_system(seed, out_dir=None):
+def build_afm_system(seed, out_dir=None, ktheta=None):
     """
     Call build_afm_system.py with the given seed inside the output folder.
+    If ktheta is provided, also pass it to the subprocess.
     """
     print(f"[info] Building afm_system.gro using build_afm_system.py ...")
     builder = Path(__file__).parent / "build_afm_system.py"
@@ -252,6 +288,8 @@ def build_afm_system(seed, out_dir=None):
         raise FileNotFoundError(f"Could not find build_afm_system.py in {builder.parent}")
 
     cmd = ["python", str(builder), "--seed", str(seed)]
+    if ktheta is not None:
+        cmd.extend(["--ktheta", str(ktheta)])
     subprocess.run(cmd, cwd=out_dir, check=True)
 
 def main():
@@ -266,7 +304,7 @@ def main():
     generate_itps(args, args.out, epsilon_map)
     write_mdp_files(args, args.out)
     write_run_sh(args, args.out)
-    build_afm_system(seed, args.out)
+    build_afm_system(seed, args.out, args.ktheta)
     print(f"[ok] Setup complete in {args.out} (seed={seed})")
 
 if __name__ == "__main__":

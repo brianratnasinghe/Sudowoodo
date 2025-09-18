@@ -238,8 +238,41 @@ def build(seed):
 # Main
 # ----------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build AFM-based multi-polymer system (Python 2.7)")
+    parser = argparse.ArgumentParser(description="Build AFM-based multi-polymer system")
     parser.add_argument("--seed", type=int, default=None, help="Random seed; default: current time")
+    parser.add_argument("--ktheta", type=float, default=None, help="Override ktheta value in polymer .itp files. If provided, updates k_theta values in pectin, cellulose, and xyloglucan .itp files in current directory.")
     args = parser.parse_args()
     seed = args.seed if args.seed is not None else int(time.time())
+    
+    # Update ktheta in .itp files if requested
+    if args.ktheta is not None:
+        import re
+        itp_files = [
+            "toppar_custom/sudowoodo_pectin.itp",
+            "toppar_custom/sudowoodo_cellulose.itp", 
+            "toppar_custom/sudowoodo_xyloglucan.itp"
+        ]
+        
+        for itp_file in itp_files:
+            try:
+                # Read the file
+                with open(itp_file, 'r') as f:
+                    lines = f.readlines()
+                
+                # Update the ktheta line
+                for i, line in enumerate(lines):
+                    if line.strip().startswith('#define k_theta'):
+                        lines[i] = f"#define k_theta {args.ktheta}\n"
+                        break
+                
+                # Write back to file
+                with open(itp_file, 'w') as f:
+                    f.writelines(lines)
+                    
+                print(f"[INFO] Updated ktheta to {args.ktheta} in {itp_file}")
+            except FileNotFoundError:
+                print(f"[WARN] Could not find {itp_file}, skipping ktheta update")
+            except Exception as e:
+                print(f"[WARN] Error updating ktheta in {itp_file}: {e}")
+    
     build(seed)
