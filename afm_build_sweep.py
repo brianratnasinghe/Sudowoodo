@@ -14,6 +14,7 @@ Optional:
   --ktheta "120,150,180"    # pectin,cellulose,xyloglucan
   --ktheta ",150,180"       # use default pectin, custom cellulose and xyloglucan
   --ktheta "120,,"          # custom pectin, default cellulose and xyloglucan
+  --multilayer              # Generate 4-layer fiber system with 180° rotation between layers
 """
 
 import argparse, shutil, os, re, random, textwrap, subprocess
@@ -28,6 +29,8 @@ def get_args():
                    help="Comma-separated ktheta values for pectin,cellulose,xyloglucan. "
                         "Use empty values to keep defaults, e.g. '120,150,180' or ',150,180' or '120,,'")
     p.add_argument('--seed', type=int, help="Random seed (int). If not set, random seed is chosen and logged.")
+    p.add_argument('--multilayer', action='store_true',
+                   help="Generate 4-layer fiber system. Each layer is rotated 180° relative to the previous layer.")
     p.add_argument('--nxylo', type=int, default=458)
     p.add_argument('--npctn', type=int, default=5501)
     p.add_argument('--ncell', type=int, default=146)
@@ -315,9 +318,12 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
         ktheta_str = ', '.join([f"{k}={v}" for k, v in ktheta_values.items()])
         log_txt += f"        Custom ktheta values: {ktheta_str}\n"
     
+    if hasattr(args, 'multilayer') and args.multilayer:
+        log_txt += "        Multi-layer mode: enabled (4 layers)\n"
+    
     write_text(out_dir / "afm_build.log", log_txt)
 
-def build_afm_system(seed, out_dir=None, ktheta_str=None):
+def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False):
     """
     Call build_afm_system.py with the given seed inside the output folder.
     """
@@ -329,6 +335,8 @@ def build_afm_system(seed, out_dir=None, ktheta_str=None):
     cmd = ["python", str(builder), "--seed", str(seed)]
     if ktheta_str:
         cmd.extend(["--ktheta", ktheta_str])
+    if multilayer:
+        cmd.append("--multilayer")
     
     subprocess.run(cmd, cwd=out_dir, check=True)
 
@@ -347,11 +355,14 @@ def main():
     generate_itps(args, args.out, epsilon_map, ktheta_values)
     write_mdp_files(args, args.out)
     write_run_sh(args, args.out)
-    build_afm_system(seed, args.out, args.ktheta)
+    build_afm_system(seed, args.out, args.ktheta, args.multilayer)
     print(f"[ok] Setup complete in {args.out} (seed={seed})")
 
     if ktheta_values:
         print(f"[info] Custom ktheta values used: {ktheta_values}")
+    
+    if args.multilayer:
+        print("[info] Multi-layer mode enabled (4 layers)")
 
 if __name__ == "__main__":
     main()

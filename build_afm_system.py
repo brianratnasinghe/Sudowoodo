@@ -116,11 +116,31 @@ class SpatialIndex(object):
 # ----------------------------
 # Build
 # ----------------------------
-def build(seed):
+def build(seed, multilayer=False):
     np.random.seed(seed)
     print("[INFO] Using random seed: %d" % seed)
-    print("[INFO] Target box: %.1f x %.1f x %.1f nm" % (BOX[0], BOX[1], BOX[2]))
-    print("[INFO] Target counts: Cell=%d, Xylo=%d, Pctn=%d" % (NUM_CELL, NUM_XYLO, NUM_PCTN))
+    
+    # Adjust box and counts based on multilayer flag
+    if multilayer:
+        # 4 layers stacked, so multiply Z by 4
+        target_box = np.array([BOX[0], BOX[1], BOX[2] * 4])
+        # Each layer has the original counts
+        target_cell_per_layer = NUM_CELL
+        target_xylo_per_layer = NUM_XYLO
+        target_pctn_per_layer = NUM_PCTN
+        print("[INFO] Multi-layer mode: 4 layers")
+        print("[INFO] Target box: %.1f x %.1f x %.1f nm" % (target_box[0], target_box[1], target_box[2]))
+        print("[INFO] Target counts per layer: Cell=%d, Xylo=%d, Pctn=%d" % 
+              (target_cell_per_layer, target_xylo_per_layer, target_pctn_per_layer))
+    else:
+        target_box = BOX.copy()
+        target_cell_per_layer = NUM_CELL
+        target_xylo_per_layer = NUM_XYLO
+        target_pctn_per_layer = NUM_PCTN
+        print("[INFO] Single-layer mode")
+        print("[INFO] Target box: %.1f x %.1f x %.1f nm" % (target_box[0], target_box[1], target_box[2]))
+        print("[INFO] Target counts: Cell=%d, Xylo=%d, Pctn=%d" % 
+              (target_cell_per_layer, target_xylo_per_layer, target_pctn_per_layer))
 
     t0 = time.time()
     print("[STEP] Loading templates: C.gro, X.gro, P.gro ...")
@@ -131,97 +151,114 @@ def build(seed):
     systems = []
     chain_specs = []
     indexer = SpatialIndex()
+    
+    # Determine number of layers and layer configuration
+    num_layers = 4 if multilayer else 1
+    layer_rotations = [0, 180, 0, 180]  # Alternating rotation for each layer
+    
+    for layer_idx in range(num_layers):
+        if multilayer:
+            # Each layer occupies its own Z-slice
+            layer_z_start = layer_idx * BOX[2]
+            layer_z_end = (layer_idx + 1) * BOX[2]
+            mid_z = (layer_z_start + layer_z_end) * 0.5
+            layer_rotation = layer_rotations[layer_idx]
+            print(f"[STEP] Building layer {layer_idx + 1}/4 (Z: {layer_z_start:.1f}-{layer_z_end:.1f} nm, rotation: {layer_rotation}°)")
+        else:
+            layer_z_start = 0
+            layer_z_end = BOX[2]
+            mid_z = BOX[2] * 0.5
+            layer_rotation = 0
+    
+        # --- Place cellulose ---
+        num_main = int(target_cell_per_layer * 0.8)
+        num_off = target_cell_per_layer - num_main
 
-    # --- Place cellulose ---
-    mid_z = BOX[2] * 0.5
-    num_main = int(NUM_CELL * 0.8)
-    num_off = NUM_CELL - num_main
+        print("[STEP] Placing cellulose (main lamella): %d" % num_main)
+        placed_ok = 0
+        for _ in tqdm(range(num_main), desc="Cell(main)", ncols=80):
+            base = rotate_chain(C_coords.copy(), layer_rotation)
+            success = False
+            for _try in range(TRY_MAIN_CELL):
+                x = np.random.uniform(0, BOX[0])
+                y = np.random.uniform(0, BOX[1])
+                z = mid_z
+                cand = translate_chain(base, [x, y, z] - base.mean(axis=0))
+                if np.any(cand.min(0) < [0, 0, layer_z_start]) or np.any(cand.max(0) > [BOX[0], BOX[1], layer_z_end]):
+                    continue
+                if indexer.has_overlap(cand, "Cell"):
+                    continue
+                systems.append(("Cell", cand))
+                chain_specs.append(("Cell", "C.gro", x, y, layer_rotation))
+                indexer.add_chain(cand, "Cell")
+                success = True
+                placed_ok += 1
+                break
+            if not success:
+                print("[WARN] Failed to place a main cellulose fibril after %d tries" % TRY_MAIN_CELL)
+        print("[INFO] Placed cellulose (main): %d/%d" % (placed_ok, num_main))
 
-    print("[STEP] Placing cellulose (main lamella): %d" % num_main)
-    placed_ok = 0
-    for _ in tqdm(range(num_main), desc="Cell(main)", ncols=80):
-        base = rotate_chain(C_coords.copy(), 0.0)
-        success = False
-        for _try in range(TRY_MAIN_CELL):
-            x = np.random.uniform(0, BOX[0])
-            y = np.random.uniform(0, BOX[1])
-            z = mid_z
-            cand = translate_chain(base, [x, y, z] - base.mean(axis=0))
-            if np.any(cand.min(0) < 0) or np.any(cand.max(0) > BOX):
-                continue
-            if indexer.has_overlap(cand, "Cell"):
-                continue
-            systems.append(("Cell", cand))
-            chain_specs.append(("Cell", "C.gro", x, y, 0.0))
-            indexer.add_chain(cand, "Cell")
-            success = True
-            placed_ok += 1
-            break
-        if not success:
-            print("[WARN] Failed to place a main cellulose fibril after %d tries" % TRY_MAIN_CELL)
-    print("[INFO] Placed cellulose (main): %d/%d" % (placed_ok, num_main))
+        print("[STEP] Placing cellulose (off-plane): %d" % num_off)
+        placed_off = 0
+        for _ in tqdm(range(num_off), desc="Cell(off)", ncols=80):
+            angle = np.random.choice([-30.0, 30.0])
+            zoff = 4.5 if angle > 0 else -4.5
+            base = rotate_chain(C_coords.copy(), angle + layer_rotation)
+            success = False
+            for _try in range(TRY_MAIN_CELL):
+                x = np.random.uniform(0, BOX[0])
+                y = np.random.uniform(0, BOX[1])
+                z = mid_z + zoff
+                cand = translate_chain(base, [x, y, z] - base.mean(axis=0))
+                if np.any(cand.min(0) < [0, 0, layer_z_start]) or np.any(cand.max(0) > [BOX[0], BOX[1], layer_z_end]):
+                    continue
+                if indexer.has_overlap(cand, "Cell"):
+                    continue
+                systems.append(("Cell", cand))
+                chain_specs.append(("Cell", "C.gro", x, y, angle + layer_rotation))
+                indexer.add_chain(cand, "Cell")
+                success = True
+                placed_off += 1
+                break
+            if not success:
+                print("[WARN] Failed to place an off-plane cellulose fibril after %d tries" % TRY_MAIN_CELL)
+        print("[INFO] Placed cellulose (off-plane): %d/%d" % (placed_off, num_off))
 
-    print("[STEP] Placing cellulose (off-plane): %d" % num_off)
-    placed_off = 0
-    for _ in tqdm(range(num_off), desc="Cell(off)", ncols=80):
-        angle = np.random.choice([-30.0, 30.0])
-        zoff = 4.5 if angle > 0 else -4.5
-        base = rotate_chain(C_coords.copy(), angle)
-        success = False
-        for _try in range(TRY_MAIN_CELL):
-            x = np.random.uniform(0, BOX[0])
-            y = np.random.uniform(0, BOX[1])
-            z = mid_z + zoff
-            cand = translate_chain(base, [x, y, z] - base.mean(axis=0))
-            if np.any(cand.min(0) < 0) or np.any(cand.max(0) > BOX):
-                continue
-            if indexer.has_overlap(cand, "Cell"):
-                continue
-            systems.append(("Cell", cand))
-            chain_specs.append(("Cell", "C.gro", x, y, angle))
-            indexer.add_chain(cand, "Cell")
-            success = True
-            placed_off += 1
-            break
-        if not success:
-            print("[WARN] Failed to place an off-plane cellulose fibril after %d tries" % TRY_MAIN_CELL)
-    print("[INFO] Placed cellulose (off-plane): %d/%d" % (placed_off, num_off))
+        # --- Place xylo + pectin ---
+        print("[STEP] Placing Xyloglucan (%d) & Pectin (%d) ..." % (target_xylo_per_layer, target_pctn_per_layer))
+        tail = [("Xylo", "X.gro")] * target_xylo_per_layer + [("Pctn", "P.gro")] * target_pctn_per_layer
+        # Place longer chains first: assume Xylo generally larger than Pctn
+        def vol_like(ctype):
+            return sigma_lookup.get(ctype, 3.0)  # simple proxy; templates already sized
+        tail.sort(key=lambda t: vol_like(t[0]), reverse=True)
 
-    # --- Place xylo + pectin ---
-    print("[STEP] Placing Xyloglucan (%d) & Pectin (%d) ..." % (NUM_XYLO, NUM_PCTN))
-    tail = [("Xylo", "X.gro")] * NUM_XYLO + [("Pctn", "P.gro")] * NUM_PCTN
-    # Place longer chains first: assume Xylo generally larger than Pctn
-    def vol_like(ctype):
-        return sigma_lookup.get(ctype, 3.0)  # simple proxy; templates already sized
-    tail.sort(key=lambda t: vol_like(t[0]), reverse=True)
-
-    placed_tail = 0
-    for ctype, tpl in tqdm(tail, desc="Xylo+Pctn", ncols=80):
-        base = X_coords if ctype == "Xylo" else P_coords
-        success = False
-        for _try in range(TRY_OTHER):
-            ang = np.random.uniform(-45.0, 45.0)
-            rot = rotate_chain(base.copy(), ang)
-            x = np.random.uniform(0, BOX[0])
-            y = np.random.uniform(0, BOX[1])
-            z = np.random.uniform(0, BOX[2])
-            cand = translate_chain(rot, [x, y, z] - rot.mean(axis=0))
-            if np.any(cand.min(0) < 0) or np.any(cand.max(0) > BOX):
-                continue
-            if indexer.has_overlap(cand, ctype):
-                continue
-            systems.append((ctype, cand))
-            chain_specs.append((ctype, tpl, x, y, ang))
-            indexer.add_chain(cand, ctype)
-            success = True
-            placed_tail += 1
-            break
-        if not success:
-            print("[WARN] Failed to place %s after %d tries" % (ctype, TRY_OTHER))
+        placed_tail = 0
+        for ctype, tpl in tqdm(tail, desc="Xylo+Pctn", ncols=80):
+            base = X_coords if ctype == "Xylo" else P_coords
+            success = False
+            for _try in range(TRY_OTHER):
+                ang = np.random.uniform(-45.0, 45.0)
+                rot = rotate_chain(base.copy(), ang + layer_rotation)
+                x = np.random.uniform(0, BOX[0])
+                y = np.random.uniform(0, BOX[1])
+                z = np.random.uniform(layer_z_start, layer_z_end)
+                cand = translate_chain(rot, [x, y, z] - rot.mean(axis=0))
+                if np.any(cand.min(0) < [0, 0, layer_z_start]) or np.any(cand.max(0) > [BOX[0], BOX[1], layer_z_end]):
+                    continue
+                if indexer.has_overlap(cand, ctype):
+                    continue
+                systems.append((ctype, cand))
+                chain_specs.append((ctype, tpl, x, y, ang + layer_rotation))
+                indexer.add_chain(cand, ctype)
+                success = True
+                placed_tail += 1
+                break
+            if not success:
+                print("[WARN] Failed to place %s after %d tries" % (ctype, TRY_OTHER))
 
     # --- Write outputs ---
     print("[STEP] Writing outputs: afm_system.gro / afm_system.top")
-    write_combined_gro("afm_system.gro", systems, BOX)
+    write_combined_gro("afm_system.gro", systems, target_box)
     write_combined_top("afm_system.top", chain_specs)
 
     # --- Summary ---
@@ -243,6 +280,8 @@ if __name__ == "__main__":
     parser.add_argument("--ktheta", type=str, 
                        help="Comma-separated ktheta values for pectin,cellulose,xyloglucan. "
                             "Use empty values to keep defaults, e.g. '120,150,180' or ',150,180' or '120,,'")
+    parser.add_argument("--multilayer", action="store_true", 
+                       help="Generate 4-layer fiber system. Each layer is rotated 180° relative to the previous layer.")
     args = parser.parse_args()
     seed = args.seed if args.seed is not None else int(time.time())
-    build(seed)
+    build(seed, multilayer=args.multilayer)
