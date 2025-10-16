@@ -240,6 +240,9 @@ def build(seed):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Build AFM-based multi-polymer system (Python 2.7)")
     parser.add_argument("--seed", type=int, default=None, help="Random seed; default: current time")
+    parser.add_argument("--ktheta", type=str, 
+                       help="Comma-separated ktheta values for pectin,cellulose,xyloglucan. "
+                            "Use empty values to keep defaults, e.g. '120,150,180' or ',150,180' or '120,,'")
     args = parser.parse_args()
     seed = args.seed if args.seed is not None else int(time.time())
     build(seed)

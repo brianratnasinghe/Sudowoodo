@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-AFM cell wall builder tool with custom epsilon mapping.
+AFM cell wall builder tool with custom epsilon mapping and ktheta modifications.
 - Copies template .gro and .itp files.
 - Modifies sudowoodo_base.itp with user-specified epsilon for bead pairs.
+- Modifies polymer .itp files with user-specified ktheta values.
 - Generates topology, .mdp files, run.sh, and afm_build.log.
 - Calls build_afm_system.py to create afm_system.gro in the output folder.
 
@@ -10,6 +11,9 @@ Usage:
   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
 Optional:
   --seed 123456
+  --ktheta "120,150,180"    # pectin,cellulose,xyloglucan
+  --ktheta ",150,180"       # use default pectin, custom cellulose and xyloglucan
+  --ktheta "120,,"          # custom pectin, default cellulose and xyloglucan
 """
 
 import argparse, shutil, os, re, random, textwrap, subprocess
@@ -20,6 +24,9 @@ def get_args():
     p.add_argument('--out', type=Path, required=True, help="Output folder")
     p.add_argument('--epsilon', type=str, required=True,
                    help="Comma-separated epsilon mapping, e.g. CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4")
+    p.add_argument('--ktheta', type=str, 
+                   help="Comma-separated ktheta values for pectin,cellulose,xyloglucan. "
+                        "Use empty values to keep defaults, e.g. '120,150,180' or ',150,180' or '120,,'")
     p.add_argument('--seed', type=int, help="Random seed (int). If not set, random seed is chosen and logged.")
     p.add_argument('--nxylo', type=int, default=458)
     p.add_argument('--npctn', type=int, default=5501)
@@ -49,6 +56,42 @@ def parse_epsilon_map(epsilon_str):
             mapping[(key[1], key[0])] = val
     return mapping
 
+def parse_ktheta_values(ktheta_str):
+    """
+    Parse ktheta string into values for pectin, cellulose, xyloglucan.
+    Returns dict with keys 'pectin', 'cellulose', 'xyloglucan' and float values or None for defaults.
+    Gracefully handles extra values by ignoring them.
+    """
+    if not ktheta_str or not ktheta_str.strip():
+        return {}
+    
+    # Split and clean values, handling up to 3 values
+    parts = ktheta_str.split(',')
+    
+    # Warn about extra values but don't error
+    if len(parts) > 3:
+        print(f"[warning] ktheta has {len(parts)} values but only first 3 (pectin,cellulose,xyloglucan) will be used")
+    
+    # Limit to first 3 parts, ignore any excess
+    parts = parts[:3]
+    
+    # Pad with empty strings if fewer than 3 values provided
+    while len(parts) < 3:
+        parts.append('')
+    
+    result = {}
+    polymer_names = ['pectin', 'cellulose', 'xyloglucan']
+    
+    for i, (name, value_str) in enumerate(zip(polymer_names, parts)):
+        value_str = value_str.strip()
+        if value_str:  # Not empty
+            try:
+                result[name] = float(value_str)
+            except ValueError:
+                raise ValueError(f"Invalid ktheta value for {name}: '{value_str}'. Must be a number.")
+    
+    return result
+
 def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
     re_lj = re.compile(r'^(\s*\w+\s+\w+\s+\d+\s+([0-9eE\.\+\-]+)\s+([0-9eE\.\+\-]+))')
     lines = itp_path.read_text().splitlines()
@@ -71,6 +114,23 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
             out.append(' '.join(parts))
         else:
             out.append(line)
+    new_path.write_text('\n'.join(out) + '\n')
+
+def modify_ktheta_in_itp(itp_path, new_path, ktheta_value=None):
+    """
+    Modify the k_theta value in an .itp file.
+    If ktheta_value is None, copy the file unchanged.
+    """
+    lines = itp_path.read_text().splitlines()
+    out = []
+    
+    for line in lines:
+        if line.startswith('#define k_theta') and ktheta_value is not None:
+            # Replace the k_theta value
+            out.append(f'#define k_theta {ktheta_value}')
+        else:
+            out.append(line)
+    
     new_path.write_text('\n'.join(out) + '\n')
 
 def randomize_structures(seed, out_dir):
@@ -102,16 +162,25 @@ def generate_topology(args, out_dir):
     """)
     write_text(out_dir / "afm_system.top", top_txt)
 
-def generate_itps(args, out_dir, epsilon_map):
+def generate_itps(args, out_dir, epsilon_map, ktheta_values=None):
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)
+    
+    # Base file (LJ parameters only)
     scale_epsilon_in_itp(Path('toppar_custom/sudowoodo_base.itp'), toppar_dir / "sudowoodo_base.itp", epsilon_map)
-    for src, dst in [
-        ('toppar_custom/sudowoodo_xyloglucan.itp', toppar_dir / "sudowoodo_xyloglucan.itp"),
-        ('toppar_custom/sudowoodo_pectin.itp', toppar_dir / "sudowoodo_pectin.itp"),
-        ('toppar_custom/sudowoodo_cellulose.itp', toppar_dir / "sudowoodo_cellulose.itp")
-    ]:
-        copy_file(src, dst)
+    
+    # Polymer-specific files with potential ktheta modification
+    itp_files = [
+        ('toppar_custom/sudowoodo_xyloglucan.itp', toppar_dir / "sudowoodo_xyloglucan.itp", 'xyloglucan'),
+        ('toppar_custom/sudowoodo_pectin.itp', toppar_dir / "sudowoodo_pectin.itp", 'pectin'),
+        ('toppar_custom/sudowoodo_cellulose.itp', toppar_dir / "sudowoodo_cellulose.itp", 'cellulose')
+    ]
+    
+    ktheta_values = ktheta_values or {}
+    
+    for src, dst, polymer_name in itp_files:
+        ktheta_value = ktheta_values.get(polymer_name)
+        modify_ktheta_in_itp(Path(src), dst, ktheta_value)
 
 def write_mdp_files(args, out_dir):
     def mdp_default_em():
@@ -230,8 +299,9 @@ def write_run_sh(args, out_dir):
     write_text(sh_path, sh_txt)
     os.chmod(sh_path, 0o755)
 
-def write_log(out_dir, seed, args, epsilon_map):
+def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
     eps_map_str = ', '.join([f"{k[0]}{k[1]}={v}" for k,v in epsilon_map.items() if k[0]<=k[1]])
+    
     log_txt = textwrap.dedent(f"""\
         AFM-Build Sweep Run Log
         ======================
@@ -240,9 +310,14 @@ def write_log(out_dir, seed, args, epsilon_map):
         Polymer counts: Xylo={args.nxylo}  Pctn={args.npctn}  Cell={args.ncell}
         Seed used: {seed}
     """)
+    
+    if ktheta_values:
+        ktheta_str = ', '.join([f"{k}={v}" for k, v in ktheta_values.items()])
+        log_txt += f"        Custom ktheta values: {ktheta_str}\n"
+    
     write_text(out_dir / "afm_build.log", log_txt)
 
-def build_afm_system(seed, out_dir=None):
+def build_afm_system(seed, out_dir=None, ktheta_str=None):
     """
     Call build_afm_system.py with the given seed inside the output folder.
     """
@@ -252,6 +327,9 @@ def build_afm_system(seed, out_dir=None):
         raise FileNotFoundError(f"Could not find build_afm_system.py in {builder.parent}")
 
     cmd = ["python", str(builder), "--seed", str(seed)]
+    if ktheta_str:
+        cmd.extend(["--ktheta", ktheta_str])
+    
     subprocess.run(cmd, cwd=out_dir, check=True)
 
 def main():
@@ -259,15 +337,21 @@ def main():
     ensure_dir(args.out)
     seed = args.seed if args.seed is not None else random.randint(1,99999999)
     random.seed(seed)
+    
     epsilon_map = parse_epsilon_map(args.epsilon)
-    write_log(args.out, seed, args, epsilon_map)
+    ktheta_values = parse_ktheta_values(args.ktheta) if args.ktheta else {}
+    
+    write_log(args.out, seed, args, epsilon_map, ktheta_values)
     randomize_structures(seed, args.out)
     generate_topology(args, args.out)
-    generate_itps(args, args.out, epsilon_map)
+    generate_itps(args, args.out, epsilon_map, ktheta_values)
     write_mdp_files(args, args.out)
     write_run_sh(args, args.out)
-    build_afm_system(seed, args.out)
+    build_afm_system(seed, args.out, args.ktheta)
     print(f"[ok] Setup complete in {args.out} (seed={seed})")
+
+    if ktheta_values:
+        print(f"[info] Custom ktheta values used: {ktheta_values}")
 
 if __name__ == "__main__":
     main()
