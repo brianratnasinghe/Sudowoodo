@@ -69,19 +69,16 @@ def write_combined_top(output_path, chain_specs):
     with open(output_path, "w") as top:
         top.write(";;;;;; AFM-Based Combined Topology\n;\n")
         top.write("#include \"toppar_custom/sudowoodo_base.itp\"\n")
-        included = set()
-        for entry in chain_specs:
-            chain_type = entry[0]
-            if chain_type not in included:
-                top.write("#include \"toppar_custom/sudowoodo_%s.itp\"\n" % chain_type.lower())
-                included.add(chain_type)
+        # Fixed include order: xyloglucan -> pectin -> cellulose (base already included above)
+        for itp_name in ["xyloglucan", "pectin", "cellulose"]:
+            top.write("#include \"toppar_custom/sudowoodo_%s.itp\"\n" % itp_name)
         top.write("\n[ system ]\nAFM-Based Cell Wall System\n\n[molecules]\n")
         counts = {}
         for entry in chain_specs:
             t = entry[0]
             counts[t] = counts.get(t, 0) + 1
-        # Keep a stable order
-        for t in ["Xylo", "Pctn", "Cell"]:
+        # Order must match the coordinate file: Cell first, then Xylo, then Pctn
+        for t in ["Cell", "Xylo", "Pctn"]:
             if t in counts:
                 top.write("%-10s %d\n" % (t, counts[t]))
 

@@ -37,6 +37,9 @@ def get_args():
     p.add_argument('--gmx', type=str, default="gmx")
     p.add_argument('--ntomp', type=int, default=24)
     p.add_argument('--ntmpi', type=int, default=1)
+    p.add_argument('--deform', type=str, default=None,
+                   help="Deform tensor for production.mdp (e.g. '0 0 0.0001 0 0 0'). "
+                        "Written as 'deform = <value>' in production.mdp when provided.")
     return p.parse_args() 
 
 def ensure_dir(path):
@@ -243,8 +246,8 @@ def write_mdp_files(args, out_dir):
             ref_p                    = 1.0   1.0
             gen_vel                  = no
         """)
-    def mdp_default_prod():
-        return textwrap.dedent("""\
+    def mdp_default_prod(deform=None):
+        txt = textwrap.dedent("""\
             integrator               = sd
             dt                       = 0.1
             nsteps                   = 200000000
@@ -280,9 +283,13 @@ def write_mdp_files(args, out_dir):
             gen_vel                  = no
             gen_temp                 = 300
         """)
+        if deform is not None:
+            txt += f"deform                   = {deform}\n"
+        return txt
     write_text(out_dir / "EM.mdp", mdp_default_em())
     write_text(out_dir / "EQ.mdp", mdp_default_eq())
-    write_text(out_dir / "production.mdp", mdp_default_prod())
+    deform = getattr(args, 'deform', None)
+    write_text(out_dir / "production.mdp", mdp_default_prod(deform))
 
 def write_run_sh(args, out_dir):
     sh_txt = textwrap.dedent(f"""\
@@ -320,6 +327,9 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
     
     if hasattr(args, 'multilayer') and args.multilayer:
         log_txt += "        Multi-layer mode: enabled (4 layers)\n"
+    
+    if hasattr(args, 'deform') and args.deform is not None:
+        log_txt += f"        Deform settings: {args.deform}\n"
     
     write_text(out_dir / "afm_build.log", log_txt)
 
