@@ -23,6 +23,7 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
    - `--epsilon` sets custom epsilon (LJ strength) for each bead pair.
    - Optionally add `--seed 12345` for reproducible randomization.
    - Optionally add `--multilayer` to generate a 4-layer fiber system (see below).
+   - Optionally add `--deform "0 0 0.0001 0 0 0"` to write a deformation tensor into `production.mdp` for z-axis loading.
 
 3. **Output structure:**  
    - Folder with all required files:
@@ -37,6 +38,37 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
    cd <your_output_folder>
    bash run.sh
    ```
+
+## Deformation Runs
+
+The builder supports adding a `deform` line to `production.mdp` with the `--deform` flag.
+
+Example for uniaxial deformation along the z axis:
+
+```bash
+python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --deform "0 0 0.0001 0 0 0"
+```
+
+The deform tensor follows GROMACS ordering:
+
+```text
+xx yy zz xy xz yz
+```
+
+For the production run template, deformation is intended along **z**. The generated `production.mdp` uses anisotropic Parrinello-Rahman pressure coupling with the z axis excluded from barostat scaling:
+
+```ini
+Pcoupl                   = parrinello-rahman
+Pcoupltype               = anisotropic
+tau_p                    = 12.0
+ref_p                    = 1 1 1 0 0 0
+compressibility          = 3e-4 3e-4 0 0 0 0
+```
+
+This means:
+- `deform` drives the z-dimension of the box
+- `x` and `y` remain pressure-coupled and can relax
+- `z` is not barostatted, so the barostat does not fight the imposed strain along the loading axis
 
 ## Multi-Layer Mode
 
