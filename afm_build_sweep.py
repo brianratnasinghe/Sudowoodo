@@ -275,10 +275,10 @@ def write_mdp_files(args, out_dir):
             tc-grps                  = system
             tau_t                    = 0.05
             ref_t                    = 300
-            Pcoupl                   = no; parrinello-rahman
+            Pcoupl                   = parrinello-rahman
             Pcoupltype               = anisotropic
             tau_p                    = 12.0
-            compressibility          = 3e-4 3e-4 3e-4 0 0 0
+            compressibility          = 3e-4 3e-4 0 0 0 0
             ref_p                    = 1 1 1 0 0 0
             gen_vel                  = no
             gen_temp                 = 300
