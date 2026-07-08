@@ -323,7 +323,7 @@ def randomize_structures(seed, out_dir):
     return
 
 def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
-    if pectin_count is None or pectin_count <= 0:
+    if not isinstance(pectin_count, int) or pectin_count <= 0:
         raise ValueError(f"pectin_count is required for per-fiber pectin ITP generation and must be a positive integer, got {pectin_count!r}")
 
     toppar_dir = out_dir / "toppar_custom"
@@ -542,6 +542,7 @@ def main():
     write_mdp_files(args, args.out)
     write_run_sh(args, args.out)
     build_afm_system(seed, args.out, args.ktheta, args.multilayer)
+    # build_afm_system.py writes afm_system.gro, which determines how many per-fiber pectin ITPs are needed.
     pectin_count = count_pectin_fibers_from_gro(args.out / "afm_system.gro")
     generate_itps(args, args.out, epsilon_map, pectin_count, ktheta_values)
     print(f"[ok] Setup complete in {args.out} (seed={seed})")
