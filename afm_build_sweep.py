@@ -308,27 +308,9 @@ def randomize_structures(seed, out_dir):
     # Example: subprocess.run(["python", "build_afm_system.py", "--seed", str(seed), ...])
     return
 
-def generate_topology(args, out_dir):
-    top_txt = textwrap.dedent(f"""\
-        ;;;;;; AFM-Based Combined Topology
-        #include "toppar_custom/sudowoodo_base.itp"
-        #include "toppar_custom/sudowoodo_xyloglucan.itp"
-        #include "toppar_custom/sudowoodo_pectin.itp"
-        #include "toppar_custom/sudowoodo_cellulose.itp"
-
-        [ system ]
-        AFM-Based Cell Wall System
-
-        [ molecules ]
-        Cell      {args.ncell}
-        Xylo      {args.nxylo}
-        Pctn      {args.npctn}
-    """)
-    write_text(out_dir / "afm_system.top", top_txt)
-
 def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
     if pectin_count is None:
-        raise ValueError("pectin_count is required for per-fiber pectin ITP generation")
+        raise ValueError("pectin_count must not be None for per-fiber pectin ITP generation")
 
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)
@@ -517,6 +499,7 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
 def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False):
     """
     Call build_afm_system.py with the given seed inside the output folder.
+    The builder writes both afm_system.gro and afm_system.top.
     """
     print(f"[info] Building afm_system.gro using build_afm_system.py ...")
     builder = Path(__file__).parent / "build_afm_system.py"
