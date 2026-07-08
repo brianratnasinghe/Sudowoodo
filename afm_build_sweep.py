@@ -26,12 +26,13 @@ PECTIN_CROSSLINK_TYPE = "PC"
 DEFAULT_PECTIN_NEUTRAL_EPSILON = 2.0
 DEFAULT_PECTIN_REPULSIVE_EPSILON = -0.5
 DEFAULT_PECTIN_CROSSLINK_EPSILON = 5.0
-# GRO files use fixed-width fields; these are 0-based slice bounds for residue number (0:5) and residue name (5:10).
+# GRO files use fixed-width fields; these 0-based slice bounds parse the residue number at 0:5 and residue name at 5:10.
 GRO_RESIDUE_NUMBER_START = 0
 GRO_RESIDUE_NUMBER_END = 5
 GRO_RESIDUE_NAME_START = 5
 GRO_RESIDUE_NAME_END = 10
 MIN_GRO_ATOM_LINE_LENGTH = GRO_RESIDUE_NAME_END
+# Pectin variant atomtypes reuse the base pectin atomtype metadata: atomic number, mass (amu), charge (e), particle type, sigma, and epsilon.
 PECTIN_ATOMTYPE_ATOMIC_NUMBER = 1
 PECTIN_ATOMTYPE_MASS = 26.6
 PECTIN_ATOMTYPE_CHARGE = 0.000
@@ -190,7 +191,7 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
         if in_atomtypes and parts and parts[0] == "P" and not added_pectin_atomtypes:
             out.append(line)
             for pectin_type in [PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE]:
-                out.append(f"{pectin_type} {PECTIN_ATOMTYPE_ATOMIC_NUMBER}  {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
+                out.append(f"{pectin_type} {PECTIN_ATOMTYPE_ATOMIC_NUMBER} {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
             added_pectin_atomtypes = True
             continue
         if '[ nonbond_params' in line:
