@@ -139,14 +139,10 @@ def build_pectin_variant_epsilon_map(epsilon_pn, epsilon_pr, epsilon_pc):
 def build_pectin_nonbond_lines(cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_sigma, pectin_variant_epsilons):
     if None in (cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_sigma):
         raise ValueError("Could not derive all required C/X/P nonbond parameters from the base ITP file")
-    out = [
-        f"C {PECTIN_NEUTRAL_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}",
-        f"C {PECTIN_REPULSIVE_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}",
-        f"C {PECTIN_CROSSLINK_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}",
-        f"X {PECTIN_NEUTRAL_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}",
-        f"X {PECTIN_REPULSIVE_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}",
-        f"X {PECTIN_CROSSLINK_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}",
-    ]
+    out = []
+    for base_type, sigma, epsilon in [("C", cp_sigma, cp_epsilon), ("X", xp_sigma, xp_epsilon)]:
+        for pectin_type in [PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE]:
+            out.append(f"{base_type} {pectin_type} 1 {sigma:.6f} {epsilon:.6f}")
     for left, right in [
         (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE),
         (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE),
@@ -193,9 +189,8 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
         parts = line.split()
         if in_atomtypes and parts and parts[0] == "P" and not added_pectin_atomtypes:
             out.append(line)
-            out.append(f"{PECTIN_NEUTRAL_TYPE} {PECTIN_ATOMTYPE_ATOMIC_NUMBER}  {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
-            out.append(f"{PECTIN_REPULSIVE_TYPE} {PECTIN_ATOMTYPE_ATOMIC_NUMBER}  {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
-            out.append(f"{PECTIN_CROSSLINK_TYPE} {PECTIN_ATOMTYPE_ATOMIC_NUMBER}  {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
+            for pectin_type in [PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE]:
+                out.append(f"{pectin_type} {PECTIN_ATOMTYPE_ATOMIC_NUMBER}  {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
             added_pectin_atomtypes = True
             continue
         if '[ nonbond_params' in line:
