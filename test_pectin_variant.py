@@ -40,7 +40,7 @@ class PectinVariantTests(unittest.TestCase):
         with TemporaryDirectory() as td:
             output_path = Path(td) / "scaled.itp"
             sweep.scale_epsilon_in_itp(
-                Path("/home/runner/work/Sudowoodo/Sudowoodo/toppar_custom/sudowoodo_base.itp"),
+                Path(__file__).resolve().parent / "toppar_custom" / "sudowoodo_base.itp",
                 output_path,
                 sweep.parse_epsilon_map("CC=1.0,CX=1.0,CP=0.7,XX=1.0,XP=0.5,PP=1.0"),
                 sweep.build_pectin_variant_epsilon_map(2.0, -0.5, 5.0),

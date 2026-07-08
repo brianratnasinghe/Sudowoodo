@@ -26,6 +26,7 @@ PECTIN_CROSSLINK_TYPE = "PC"
 DEFAULT_PECTIN_NEUTRAL_EPSILON = 2.0
 DEFAULT_PECTIN_REPULSIVE_EPSILON = -0.5
 DEFAULT_PECTIN_CROSSLINK_EPSILON = 5.0
+# GRO files use fixed-width fields: residue number in columns 0-5 and residue name in columns 5-10.
 GRO_RESIDUE_NUMBER_START = 0
 GRO_RESIDUE_NUMBER_END = 5
 GRO_RESIDUE_NAME_START = 5
@@ -129,6 +130,28 @@ def build_pectin_variant_epsilon_map(epsilon_pn, epsilon_pr, epsilon_pc):
         mapping[(right, left)] = mapping[(left, right)]
     return mapping
 
+def build_pectin_nonbond_lines(cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_sigma, pectin_variant_epsilons):
+    if None in (cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_sigma):
+        raise ValueError("Could not derive all required C/X/P nonbond parameters from the base ITP file")
+    out = [
+        f"C {PECTIN_NEUTRAL_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}",
+        f"C {PECTIN_REPULSIVE_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}",
+        f"C {PECTIN_CROSSLINK_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}",
+        f"X {PECTIN_NEUTRAL_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}",
+        f"X {PECTIN_REPULSIVE_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}",
+        f"X {PECTIN_CROSSLINK_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}",
+    ]
+    for left, right in [
+        (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE),
+        (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE),
+        (PECTIN_CROSSLINK_TYPE, PECTIN_CROSSLINK_TYPE),
+        (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE),
+        (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE),
+        (PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE),
+    ]:
+        out.append(f"{left} {right} 1 {pp_sigma:.6f} {pectin_variant_epsilons[(left, right)]:.6f}")
+    return out
+
 def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilons):
     re_lj = re.compile(r'^(\s*\w+\s+\w+\s+\d+\s+([0-9eE\.\+\-]+)\s+([0-9eE\.\+\-]+))')
     lines = itp_path.read_text().splitlines()
@@ -145,23 +168,14 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
         nonlocal added_pectin_nonbond
         if added_pectin_nonbond:
             return
-        if cp_sigma is None or xp_sigma is None or pp_sigma is None:
-            return
-        out.append(f"C {PECTIN_NEUTRAL_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}")
-        out.append(f"C {PECTIN_REPULSIVE_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}")
-        out.append(f"C {PECTIN_CROSSLINK_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}")
-        out.append(f"X {PECTIN_NEUTRAL_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
-        out.append(f"X {PECTIN_REPULSIVE_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
-        out.append(f"X {PECTIN_CROSSLINK_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
-        for left, right in [
-            (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE),
-            (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE),
-            (PECTIN_CROSSLINK_TYPE, PECTIN_CROSSLINK_TYPE),
-            (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE),
-            (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE),
-            (PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE),
-        ]:
-            out.append(f"{left} {right} 1 {pp_sigma:.6f} {pectin_variant_epsilons[(left, right)]:.6f}")
+        out.extend(build_pectin_nonbond_lines(
+            cp_sigma,
+            cp_epsilon,
+            xp_sigma,
+            xp_epsilon,
+            pp_sigma,
+            pectin_variant_epsilons,
+        ))
         added_pectin_nonbond = True
     for line in lines:
         if line.strip().startswith("[ atomtypes"):
@@ -309,8 +323,8 @@ def randomize_structures(seed, out_dir):
     return
 
 def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
-    if pectin_count is None:
-        raise ValueError("pectin_count must not be None for per-fiber pectin ITP generation")
+    if pectin_count is None or pectin_count <= 0:
+        raise ValueError(f"pectin_count is required for per-fiber pectin ITP generation and must be a positive integer, got {pectin_count!r}")
 
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)
