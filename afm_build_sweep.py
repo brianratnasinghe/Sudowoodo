@@ -23,6 +23,17 @@ from pathlib import Path
 PECTIN_DEFAULT_TYPE = "P2"
 PECTIN_NEG_TYPE = "PN"
 PECTIN_POS_TYPE = "P5"
+PECTIN_DEFAULT_PP_EPSILON = 2.0
+PECTIN_NEG_PP_EPSILON = -0.5
+PECTIN_POS_PP_EPSILON = 5.0
+PECTIN_DEFAULT_NEG_PP_EPSILON = 0.75
+PECTIN_DEFAULT_POS_PP_EPSILON = 3.5
+PECTIN_NEG_POS_PP_EPSILON = 2.25
+GRO_RESIDUE_NUMBER_START = 0
+GRO_RESIDUE_NUMBER_END = 5
+GRO_RESIDUE_NAME_START = 5
+GRO_RESIDUE_NAME_END = 10
+MIN_GRO_ATOM_LINE_LENGTH = GRO_RESIDUE_NAME_END
 
 def get_args():
     p = argparse.ArgumentParser(description="AFM cell wall builder and sweep tool (custom epsilon mapping)")
@@ -114,7 +125,7 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
     added_pectin_atomtypes = False
     added_pectin_nonbond = False
 
-    def append_pectin_nonbond_params():
+    def _add_pectin_nonbond_params_once():
         nonlocal added_pectin_nonbond
         if added_pectin_nonbond:
             return
@@ -126,12 +137,12 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
         out.append(f"X {PECTIN_DEFAULT_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
         out.append(f"X {PECTIN_NEG_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
         out.append(f"X {PECTIN_POS_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
-        out.append(f"{PECTIN_DEFAULT_TYPE} {PECTIN_DEFAULT_TYPE} 1 {pp_sigma:.6f} 2.000000")
-        out.append(f"{PECTIN_NEG_TYPE} {PECTIN_NEG_TYPE} 1 {pp_sigma:.6f} -0.500000")
-        out.append(f"{PECTIN_POS_TYPE} {PECTIN_POS_TYPE} 1 {pp_sigma:.6f} 5.000000")
-        out.append(f"{PECTIN_DEFAULT_TYPE} {PECTIN_NEG_TYPE} 1 {pp_sigma:.6f} 0.750000")
-        out.append(f"{PECTIN_DEFAULT_TYPE} {PECTIN_POS_TYPE} 1 {pp_sigma:.6f} 3.500000")
-        out.append(f"{PECTIN_NEG_TYPE} {PECTIN_POS_TYPE} 1 {pp_sigma:.6f} 2.250000")
+        out.append(f"{PECTIN_DEFAULT_TYPE} {PECTIN_DEFAULT_TYPE} 1 {pp_sigma:.6f} {PECTIN_DEFAULT_PP_EPSILON:.6f}")
+        out.append(f"{PECTIN_NEG_TYPE} {PECTIN_NEG_TYPE} 1 {pp_sigma:.6f} {PECTIN_NEG_PP_EPSILON:.6f}")
+        out.append(f"{PECTIN_POS_TYPE} {PECTIN_POS_TYPE} 1 {pp_sigma:.6f} {PECTIN_POS_PP_EPSILON:.6f}")
+        out.append(f"{PECTIN_DEFAULT_TYPE} {PECTIN_NEG_TYPE} 1 {pp_sigma:.6f} {PECTIN_DEFAULT_NEG_PP_EPSILON:.6f}")
+        out.append(f"{PECTIN_DEFAULT_TYPE} {PECTIN_POS_TYPE} 1 {pp_sigma:.6f} {PECTIN_DEFAULT_POS_PP_EPSILON:.6f}")
+        out.append(f"{PECTIN_NEG_TYPE} {PECTIN_POS_TYPE} 1 {pp_sigma:.6f} {PECTIN_NEG_POS_PP_EPSILON:.6f}")
         added_pectin_nonbond = True
     for line in lines:
         if line.strip().startswith("[ atomtypes"):
@@ -140,7 +151,8 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
             continue
         if in_atomtypes and line.strip().startswith("[") and not line.strip().startswith("[ atomtypes"):
             in_atomtypes = False
-        if in_atomtypes and line.split()[:1] == ["P"] and not added_pectin_atomtypes:
+        parts = line.split()
+        if in_atomtypes and parts and parts[0] == "P" and not added_pectin_atomtypes:
             out.append(line)
             out.append(f"{PECTIN_DEFAULT_TYPE} 1  26.6 0.000 A 0.0 0.0")
             out.append(f"{PECTIN_NEG_TYPE} 1  26.6 0.000 A 0.0 0.0")
@@ -153,7 +165,7 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
             continue
         if in_nb and line.strip().startswith('['):
             in_nb = False
-            append_pectin_nonbond_params()
+            _add_pectin_nonbond_params_once()
         if in_nb and re_lj.match(line):
             parts = line.split()
             i, j = parts[0], parts[1]
@@ -171,7 +183,7 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
         else:
             out.append(line)
     if in_nb:
-        append_pectin_nonbond_params()
+        _add_pectin_nonbond_params_once()
     new_path.write_text('\n'.join(out) + '\n')
 
 def modify_ktheta_in_itp(itp_path, new_path, ktheta_value=None):
@@ -245,16 +257,26 @@ def _write_randomized_pectin_itp(src_path, dst_path, molecule_name, ktheta_value
             parts[1] = PECTIN_POS_TYPE
         else:
             parts[1] = PECTIN_DEFAULT_TYPE
-        out[out_idx] = "  " + "    ".join(parts)
+        out[out_idx] = "  " + " ".join(parts)
 
     dst_path.write_text('\n'.join(out) + '\n')
 
-def count_pectin_fibers(top_path):
-    pectin_count = 0
-    for line in top_path.read_text().splitlines():
-        if line.strip().startswith("Pctn_"):
-            pectin_count += 1
-    return pectin_count
+def count_pectin_fibers_from_gro(gro_path):
+    pectin_residues = set()
+    lines = gro_path.read_text().splitlines()
+    if len(lines) < 3:
+        return 0
+    for line in lines[2:-1]:
+        if len(line) < MIN_GRO_ATOM_LINE_LENGTH:
+            continue
+        try:
+            residue_number = int(line[GRO_RESIDUE_NUMBER_START:GRO_RESIDUE_NUMBER_END])
+        except ValueError:
+            continue
+        residue_name = line[GRO_RESIDUE_NAME_START:GRO_RESIDUE_NAME_END].strip()
+        if residue_name == "Pctn":
+            pectin_residues.add(residue_number)
+    return len(pectin_residues)
 
 def randomize_structures(seed, out_dir):
     for src, dst in [
@@ -286,6 +308,9 @@ def generate_topology(args, out_dir):
     write_text(out_dir / "afm_system.top", top_txt)
 
 def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
+    if pectin_count is None:
+        raise ValueError("pectin_count is required for per-fiber pectin ITP generation")
+
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)
     
@@ -490,7 +515,7 @@ def main():
     write_mdp_files(args, args.out)
     write_run_sh(args, args.out)
     build_afm_system(seed, args.out, args.ktheta, args.multilayer)
-    pectin_count = count_pectin_fibers(args.out / "afm_system.top")
+    pectin_count = count_pectin_fibers_from_gro(args.out / "afm_system.gro")
     generate_itps(args, args.out, epsilon_map, pectin_count, ktheta_values)
     print(f"[ok] Setup complete in {args.out} (seed={seed})")
 
