@@ -26,12 +26,18 @@ PECTIN_CROSSLINK_TYPE = "PC"
 DEFAULT_PECTIN_NEUTRAL_EPSILON = 2.0
 DEFAULT_PECTIN_REPULSIVE_EPSILON = -0.5
 DEFAULT_PECTIN_CROSSLINK_EPSILON = 5.0
-# GRO files use fixed-width fields: residue number in columns 0-5 and residue name in columns 5-10.
+# GRO files use fixed-width fields; these are 0-based slice bounds for residue number (0:5) and residue name (5:10).
 GRO_RESIDUE_NUMBER_START = 0
 GRO_RESIDUE_NUMBER_END = 5
 GRO_RESIDUE_NAME_START = 5
 GRO_RESIDUE_NAME_END = 10
 MIN_GRO_ATOM_LINE_LENGTH = GRO_RESIDUE_NAME_END
+PECTIN_ATOMTYPE_ATOMIC_NUMBER = 1
+PECTIN_ATOMTYPE_MASS = 26.6
+PECTIN_ATOMTYPE_CHARGE = 0.000
+PECTIN_ATOMTYPE_PARTICLE_TYPE = "A"
+PECTIN_ATOMTYPE_SIGMA = 0.0
+PECTIN_ATOMTYPE_EPSILON = 0.0
 
 def get_args():
     p = argparse.ArgumentParser(description="AFM cell wall builder and sweep tool (custom epsilon mapping)")
@@ -187,9 +193,9 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
         parts = line.split()
         if in_atomtypes and parts and parts[0] == "P" and not added_pectin_atomtypes:
             out.append(line)
-            out.append(f"{PECTIN_NEUTRAL_TYPE} 1  26.6 0.000 A 0.0 0.0")
-            out.append(f"{PECTIN_REPULSIVE_TYPE} 1  26.6 0.000 A 0.0 0.0")
-            out.append(f"{PECTIN_CROSSLINK_TYPE} 1  26.6 0.000 A 0.0 0.0")
+            out.append(f"{PECTIN_NEUTRAL_TYPE} {PECTIN_ATOMTYPE_ATOMIC_NUMBER}  {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
+            out.append(f"{PECTIN_REPULSIVE_TYPE} {PECTIN_ATOMTYPE_ATOMIC_NUMBER}  {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
+            out.append(f"{PECTIN_CROSSLINK_TYPE} {PECTIN_ATOMTYPE_ATOMIC_NUMBER}  {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
             added_pectin_atomtypes = True
             continue
         if '[ nonbond_params' in line:
@@ -324,7 +330,7 @@ def randomize_structures(seed, out_dir):
 
 def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
     if not isinstance(pectin_count, int) or pectin_count <= 0:
-        raise ValueError(f"pectin_count is required for per-fiber pectin ITP generation and must be a positive integer, got {pectin_count!r}")
+        raise ValueError(f"pectin_count must be a positive integer, got {pectin_count!r}")
 
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)

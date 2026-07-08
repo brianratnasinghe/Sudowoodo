@@ -30,7 +30,14 @@ class PectinVariantTests(unittest.TestCase):
         self.assertEqual(len(quarters), 4)
 
     def test_count_pectin_fibers_from_gro(self):
-        gro = """Test\n    4\n    1Cell    C1    1   0.000   0.000   0.000\n    1Pctn    P1    1   0.000   0.000   0.000\n    1Pctn    P2    2   0.100   0.100   0.100\n    2Pctn    P1    1   0.200   0.200   0.200\n   1.00000   1.00000   1.00000\n"""
+        gro = """Test
+    4
+    1Cell    C1    1   0.000   0.000   0.000
+    1Pctn    P1    1   0.000   0.000   0.000
+    1Pctn    P2    2   0.100   0.100   0.100
+    2Pctn    P1    1   0.200   0.200   0.200
+   1.00000   1.00000   1.00000
+"""
         with TemporaryDirectory() as td:
             gro_path = Path(td) / "afm_system.gro"
             gro_path.write_text(gro)
