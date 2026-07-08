@@ -7,14 +7,14 @@ import afm_build_sweep as sweep
 
 
 class PectinVariantTests(unittest.TestCase):
-    def test_build_pectin_variant_epsilon_map_uses_pairwise_means(self):
+    def test_build_pectin_variant_epsilon_map_uses_exact_pn_pairs_and_defaults_others_to_two(self):
         epsilon_map = sweep.build_pectin_variant_epsilon_map(2.0, -0.5, 5.0)
         self.assertEqual(epsilon_map[("PN", "PN")], 2.0)
-        self.assertEqual(epsilon_map[("PR", "PR")], -0.5)
-        self.assertEqual(epsilon_map[("PC", "PC")], 5.0)
-        self.assertEqual(epsilon_map[("PN", "PR")], 0.75)
-        self.assertEqual(epsilon_map[("PN", "PC")], 3.5)
-        self.assertEqual(epsilon_map[("PR", "PC")], 2.25)
+        self.assertEqual(epsilon_map[("PN", "PR")], -0.5)
+        self.assertEqual(epsilon_map[("PN", "PC")], 5.0)
+        self.assertEqual(epsilon_map[("PR", "PR")], 2.0)
+        self.assertEqual(epsilon_map[("PC", "PC")], 2.0)
+        self.assertEqual(epsilon_map[("PR", "PC")], 2.0)
 
     def test_choose_distributed_positions_requires_at_least_four_beads(self):
         with self.assertRaisesRegex(ValueError, "must have at least 4 beads"):
@@ -57,8 +57,10 @@ class PectinVariantTests(unittest.TestCase):
             self.assertIn("C PR 1 1.837000 0.700000", text)
             self.assertIn("C PC 1 1.837000 0.700000", text)
             self.assertIn("PN PN 1 1.000000 2.000000", text)
-            self.assertIn("PR PR 1 1.000000 -0.500000", text)
-            self.assertIn("PC PC 1 1.000000 5.000000", text)
+            self.assertIn("PN PR 1 1.000000 -0.500000", text)
+            self.assertIn("PN PC 1 1.000000 5.000000", text)
+            self.assertIn("PR PR 1 1.000000 2.000000", text)
+            self.assertIn("PC PC 1 1.000000 2.000000", text)
 
 
 if __name__ == "__main__":

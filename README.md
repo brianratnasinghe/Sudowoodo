@@ -21,7 +21,8 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
 
    - `--out` specifies the output folder.
    - `--epsilon` sets custom epsilon (LJ strength) for the base C/X/P bead pairs.
-   - `--epsilon-pr`, `--epsilon-pn`, and `--epsilon-pc` set the pectin variant self-epsilon values for repulsive (`PR`), neutral (`PN`), and crosslink (`PC`) beads. Mixed pectin-variant epsilon values are derived from their arithmetic mean.
+   - `--epsilon-pr`, `--epsilon-pn`, and `--epsilon-pc` set the exact epsilon values for the `PN/PR`, `PN/PN`, and `PN/PC` pectin bead pairs.
+   - The remaining pectin-pair epsilon values (`PR/PR`, `PR/PC`, and `PC/PC`) are fixed at `2.0`.
    - Optionally add `--seed 12345` for reproducible randomization.
    - Optionally add `--multilayer` to generate a 4-layer fiber system (see below).
 

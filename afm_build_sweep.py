@@ -26,6 +26,7 @@ PECTIN_CROSSLINK_TYPE = "PC"
 DEFAULT_PECTIN_NEUTRAL_EPSILON = 2.0
 DEFAULT_PECTIN_REPULSIVE_EPSILON = -0.5
 DEFAULT_PECTIN_CROSSLINK_EPSILON = 5.0
+DEFAULT_PECTIN_OTHER_PAIR_EPSILON = 2.0
 # GRO files use fixed-width fields; these 0-based slice bounds parse the residue number at 0:5 and residue name at 5:10.
 GRO_RESIDUE_NUMBER_START = 0
 GRO_RESIDUE_NUMBER_END = 5
@@ -46,11 +47,11 @@ def get_args():
     p.add_argument('--epsilon', type=str, required=True,
                    help="Comma-separated epsilon mapping, e.g. CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4")
     p.add_argument('--epsilon-pr', type=float, default=DEFAULT_PECTIN_REPULSIVE_EPSILON,
-                   help="Repulsive pectin (PR) self epsilon. Mixed PR interactions use the arithmetic mean.")
+                   help="Exact epsilon for the PN/PR pectin pair.")
     p.add_argument('--epsilon-pn', type=float, default=DEFAULT_PECTIN_NEUTRAL_EPSILON,
-                   help="Neutral pectin (PN) self epsilon. Mixed PN interactions use the arithmetic mean.")
+                   help="Exact epsilon for the PN/PN pectin pair.")
     p.add_argument('--epsilon-pc', type=float, default=DEFAULT_PECTIN_CROSSLINK_EPSILON,
-                   help="Crosslink pectin (PC) self epsilon. Mixed PC interactions use the arithmetic mean.")
+                   help="Exact epsilon for the PN/PC pectin pair.")
     p.add_argument('--ktheta', type=str, 
                    help="Comma-separated ktheta values for pectin,cellulose,xyloglucan. "
                         "Use empty values to keep defaults, e.g. '120,150,180' or ',150,180' or '120,,'")
@@ -127,11 +128,11 @@ def parse_ktheta_values(ktheta_str):
 def build_pectin_variant_epsilon_map(epsilon_pn, epsilon_pr, epsilon_pc):
     mapping = {
         (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE): epsilon_pn,
-        (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE): epsilon_pr,
-        (PECTIN_CROSSLINK_TYPE, PECTIN_CROSSLINK_TYPE): epsilon_pc,
-        (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE): (epsilon_pn + epsilon_pr) / 2.0,
-        (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE): (epsilon_pn + epsilon_pc) / 2.0,
-        (PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE): (epsilon_pr + epsilon_pc) / 2.0,
+        (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE): DEFAULT_PECTIN_OTHER_PAIR_EPSILON,
+        (PECTIN_CROSSLINK_TYPE, PECTIN_CROSSLINK_TYPE): DEFAULT_PECTIN_OTHER_PAIR_EPSILON,
+        (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE): epsilon_pr,
+        (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE): epsilon_pc,
+        (PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE): DEFAULT_PECTIN_OTHER_PAIR_EPSILON,
     }
     for left, right in list(mapping):
         mapping[(right, left)] = mapping[(left, right)]
@@ -495,7 +496,7 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
         ======================
         Output directory: {out_dir}
         Epsilon mapping: {eps_map_str}
-        Pectin variant epsilons: PR={args.epsilon_pr} PN={args.epsilon_pn} PC={args.epsilon_pc}
+        Pectin variant epsilons: PN/PR={args.epsilon_pr} PN/PN={args.epsilon_pn} PN/PC={args.epsilon_pc} other pairs={DEFAULT_PECTIN_OTHER_PAIR_EPSILON}
         Polymer counts: Xylo={args.nxylo}  Pctn={args.npctn}  Cell={args.ncell}
         Seed used: {seed}
     """)
