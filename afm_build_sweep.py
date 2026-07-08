@@ -8,7 +8,7 @@ AFM cell wall builder tool with custom epsilon mapping and ktheta modifications.
 - Calls build_afm_system.py to create afm_system.gro in the output folder.
 
 Usage:
-  python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
+  python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pn 2.0 --epsilon-pc 5.0
 Optional:
   --seed 123456
   --ktheta "120,150,180"    # pectin,cellulose,xyloglucan
@@ -20,15 +20,12 @@ Optional:
 import argparse, shutil, os, re, random, textwrap, subprocess
 from pathlib import Path
 
-PECTIN_DEFAULT_TYPE = "P2"
-PECTIN_NEG_TYPE = "PN"
-PECTIN_POS_TYPE = "P5"
-PECTIN_DEFAULT_PP_EPSILON = 2.0
-PECTIN_NEG_PP_EPSILON = -0.5
-PECTIN_POS_PP_EPSILON = 5.0
-PECTIN_DEFAULT_NEG_PP_EPSILON = 0.75
-PECTIN_DEFAULT_POS_PP_EPSILON = 3.5
-PECTIN_NEG_POS_PP_EPSILON = 2.25
+PECTIN_NEUTRAL_TYPE = "PN"
+PECTIN_REPULSIVE_TYPE = "PR"
+PECTIN_CROSSLINK_TYPE = "PC"
+DEFAULT_PECTIN_NEUTRAL_EPSILON = 2.0
+DEFAULT_PECTIN_REPULSIVE_EPSILON = -0.5
+DEFAULT_PECTIN_CROSSLINK_EPSILON = 5.0
 GRO_RESIDUE_NUMBER_START = 0
 GRO_RESIDUE_NUMBER_END = 5
 GRO_RESIDUE_NAME_START = 5
@@ -40,6 +37,12 @@ def get_args():
     p.add_argument('--out', type=Path, required=True, help="Output folder")
     p.add_argument('--epsilon', type=str, required=True,
                    help="Comma-separated epsilon mapping, e.g. CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4")
+    p.add_argument('--epsilon-pr', type=float, default=DEFAULT_PECTIN_REPULSIVE_EPSILON,
+                   help="Repulsive pectin (PR) self epsilon. Mixed PR interactions use the arithmetic mean.")
+    p.add_argument('--epsilon-pn', type=float, default=DEFAULT_PECTIN_NEUTRAL_EPSILON,
+                   help="Neutral pectin (PN) self epsilon. Mixed PN interactions use the arithmetic mean.")
+    p.add_argument('--epsilon-pc', type=float, default=DEFAULT_PECTIN_CROSSLINK_EPSILON,
+                   help="Crosslink pectin (PC) self epsilon. Mixed PC interactions use the arithmetic mean.")
     p.add_argument('--ktheta', type=str, 
                    help="Comma-separated ktheta values for pectin,cellulose,xyloglucan. "
                         "Use empty values to keep defaults, e.g. '120,150,180' or ',150,180' or '120,,'")
@@ -113,7 +116,20 @@ def parse_ktheta_values(ktheta_str):
     
     return result
 
-def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
+def build_pectin_variant_epsilon_map(epsilon_pn, epsilon_pr, epsilon_pc):
+    mapping = {
+        (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE): epsilon_pn,
+        (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE): epsilon_pr,
+        (PECTIN_CROSSLINK_TYPE, PECTIN_CROSSLINK_TYPE): epsilon_pc,
+        (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE): (epsilon_pn + epsilon_pr) / 2.0,
+        (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE): (epsilon_pn + epsilon_pc) / 2.0,
+        (PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE): (epsilon_pr + epsilon_pc) / 2.0,
+    }
+    for left, right in list(mapping):
+        mapping[(right, left)] = mapping[(left, right)]
+    return mapping
+
+def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilons):
     re_lj = re.compile(r'^(\s*\w+\s+\w+\s+\d+\s+([0-9eE\.\+\-]+)\s+([0-9eE\.\+\-]+))')
     lines = itp_path.read_text().splitlines()
     out = []
@@ -131,18 +147,21 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
             return
         if cp_sigma is None or xp_sigma is None or pp_sigma is None:
             return
-        out.append(f"C {PECTIN_DEFAULT_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}")
-        out.append(f"C {PECTIN_NEG_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}")
-        out.append(f"C {PECTIN_POS_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}")
-        out.append(f"X {PECTIN_DEFAULT_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
-        out.append(f"X {PECTIN_NEG_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
-        out.append(f"X {PECTIN_POS_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
-        out.append(f"{PECTIN_DEFAULT_TYPE} {PECTIN_DEFAULT_TYPE} 1 {pp_sigma:.6f} {PECTIN_DEFAULT_PP_EPSILON:.6f}")
-        out.append(f"{PECTIN_NEG_TYPE} {PECTIN_NEG_TYPE} 1 {pp_sigma:.6f} {PECTIN_NEG_PP_EPSILON:.6f}")
-        out.append(f"{PECTIN_POS_TYPE} {PECTIN_POS_TYPE} 1 {pp_sigma:.6f} {PECTIN_POS_PP_EPSILON:.6f}")
-        out.append(f"{PECTIN_DEFAULT_TYPE} {PECTIN_NEG_TYPE} 1 {pp_sigma:.6f} {PECTIN_DEFAULT_NEG_PP_EPSILON:.6f}")
-        out.append(f"{PECTIN_DEFAULT_TYPE} {PECTIN_POS_TYPE} 1 {pp_sigma:.6f} {PECTIN_DEFAULT_POS_PP_EPSILON:.6f}")
-        out.append(f"{PECTIN_NEG_TYPE} {PECTIN_POS_TYPE} 1 {pp_sigma:.6f} {PECTIN_NEG_POS_PP_EPSILON:.6f}")
+        out.append(f"C {PECTIN_NEUTRAL_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}")
+        out.append(f"C {PECTIN_REPULSIVE_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}")
+        out.append(f"C {PECTIN_CROSSLINK_TYPE} 1 {cp_sigma:.6f} {cp_epsilon:.6f}")
+        out.append(f"X {PECTIN_NEUTRAL_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
+        out.append(f"X {PECTIN_REPULSIVE_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
+        out.append(f"X {PECTIN_CROSSLINK_TYPE} 1 {xp_sigma:.6f} {xp_epsilon:.6f}")
+        for left, right in [
+            (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE),
+            (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE),
+            (PECTIN_CROSSLINK_TYPE, PECTIN_CROSSLINK_TYPE),
+            (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE),
+            (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE),
+            (PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE),
+        ]:
+            out.append(f"{left} {right} 1 {pp_sigma:.6f} {pectin_variant_epsilons[(left, right)]:.6f}")
         added_pectin_nonbond = True
     for line in lines:
         if line.strip().startswith("[ atomtypes"):
@@ -154,9 +173,9 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
         parts = line.split()
         if in_atomtypes and parts and parts[0] == "P" and not added_pectin_atomtypes:
             out.append(line)
-            out.append(f"{PECTIN_DEFAULT_TYPE} 1  26.6 0.000 A 0.0 0.0")
-            out.append(f"{PECTIN_NEG_TYPE} 1  26.6 0.000 A 0.0 0.0")
-            out.append(f"{PECTIN_POS_TYPE} 1  26.6 0.000 A 0.0 0.0")
+            out.append(f"{PECTIN_NEUTRAL_TYPE} 1  26.6 0.000 A 0.0 0.0")
+            out.append(f"{PECTIN_REPULSIVE_TYPE} 1  26.6 0.000 A 0.0 0.0")
+            out.append(f"{PECTIN_CROSSLINK_TYPE} 1  26.6 0.000 A 0.0 0.0")
             added_pectin_atomtypes = True
             continue
         if '[ nonbond_params' in line:
@@ -252,11 +271,11 @@ def _write_randomized_pectin_itp(src_path, dst_path, molecule_name, ktheta_value
     for idx, out_idx in enumerate(atom_line_indices):
         parts = out[out_idx].split()
         if idx in neg_positions:
-            parts[1] = PECTIN_NEG_TYPE
+            parts[1] = PECTIN_REPULSIVE_TYPE
         elif idx in pos_positions:
-            parts[1] = PECTIN_POS_TYPE
+            parts[1] = PECTIN_CROSSLINK_TYPE
         else:
-            parts[1] = PECTIN_DEFAULT_TYPE
+            parts[1] = PECTIN_NEUTRAL_TYPE
         out[out_idx] = "  " + " ".join(parts)
 
     dst_path.write_text('\n'.join(out) + '\n')
@@ -315,7 +334,17 @@ def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
     ensure_dir(toppar_dir)
     
     # Base file (LJ parameters only)
-    scale_epsilon_in_itp(Path('toppar_custom/sudowoodo_base.itp'), toppar_dir / "sudowoodo_base.itp", epsilon_map)
+    pectin_variant_epsilons = build_pectin_variant_epsilon_map(
+        epsilon_pn=args.epsilon_pn,
+        epsilon_pr=args.epsilon_pr,
+        epsilon_pc=args.epsilon_pc,
+    )
+    scale_epsilon_in_itp(
+        Path('toppar_custom/sudowoodo_base.itp'),
+        toppar_dir / "sudowoodo_base.itp",
+        epsilon_map,
+        pectin_variant_epsilons,
+    )
     
     # Polymer-specific files with potential ktheta modification
     itp_files = [
@@ -468,6 +497,7 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
         ======================
         Output directory: {out_dir}
         Epsilon mapping: {eps_map_str}
+        Pectin variant epsilons: PR={args.epsilon_pr} PN={args.epsilon_pn} PC={args.epsilon_pc}
         Polymer counts: Xylo={args.nxylo}  Pctn={args.npctn}  Cell={args.ncell}
         Seed used: {seed}
     """)

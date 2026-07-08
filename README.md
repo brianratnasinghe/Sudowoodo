@@ -16,11 +16,12 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
 
 2. **Run the builder script:**  
    ```bash
-   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
+   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pn 2.0 --epsilon-pc 5.0
    ```
 
    - `--out` specifies the output folder.
-   - `--epsilon` sets custom epsilon (LJ strength) for each bead pair.
+   - `--epsilon` sets custom epsilon (LJ strength) for the base C/X/P bead pairs.
+   - `--epsilon-pr`, `--epsilon-pn`, and `--epsilon-pc` set the pectin variant self-epsilon values for repulsive (`PR`), neutral (`PN`), and crosslink (`PC`) beads. Mixed pectin-variant epsilon values are derived from their arithmetic mean.
    - Optionally add `--seed 12345` for reproducible randomization.
    - Optionally add `--multilayer` to generate a 4-layer fiber system (see below).
 
@@ -44,7 +45,7 @@ The builder supports creating a 4-layer fiber system using the `--multilayer` fl
 
 ```bash
 # For afm_build_sweep.py
-python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --multilayer
+python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pn 2.0 --epsilon-pc 5.0 --multilayer
 
 # Or directly with build_afm_system.py
 python build_afm_system.py --seed 12345 --multilayer

@@ -7,6 +7,15 @@ import afm_build_sweep as sweep
 
 
 class PectinVariantTests(unittest.TestCase):
+    def test_build_pectin_variant_epsilon_map_uses_pairwise_means(self):
+        epsilon_map = sweep.build_pectin_variant_epsilon_map(2.0, -0.5, 5.0)
+        self.assertEqual(epsilon_map[("PN", "PN")], 2.0)
+        self.assertEqual(epsilon_map[("PR", "PR")], -0.5)
+        self.assertEqual(epsilon_map[("PC", "PC")], 5.0)
+        self.assertEqual(epsilon_map[("PN", "PR")], 0.75)
+        self.assertEqual(epsilon_map[("PN", "PC")], 3.5)
+        self.assertEqual(epsilon_map[("PR", "PC")], 2.25)
+
     def test_choose_distributed_positions_requires_at_least_four_beads(self):
         with self.assertRaises(ValueError):
             sweep._choose_distributed_positions(3)
@@ -26,6 +35,23 @@ class PectinVariantTests(unittest.TestCase):
             gro_path = Path(td) / "afm_system.gro"
             gro_path.write_text(gro)
             self.assertEqual(sweep.count_pectin_fibers_from_gro(gro_path), 2)
+
+    def test_scale_epsilon_in_itp_writes_new_pectin_variant_types(self):
+        with TemporaryDirectory() as td:
+            output_path = Path(td) / "scaled.itp"
+            sweep.scale_epsilon_in_itp(
+                Path("/home/runner/work/Sudowoodo/Sudowoodo/toppar_custom/sudowoodo_base.itp"),
+                output_path,
+                sweep.parse_epsilon_map("CC=1.0,CX=1.0,CP=0.7,XX=1.0,XP=0.5,PP=1.0"),
+                sweep.build_pectin_variant_epsilon_map(2.0, -0.5, 5.0),
+            )
+            text = output_path.read_text()
+            self.assertIn("C PN 1 1.837000 0.700000", text)
+            self.assertIn("C PR 1 1.837000 0.700000", text)
+            self.assertIn("C PC 1 1.837000 0.700000", text)
+            self.assertIn("PN PN 1 1.000000 2.000000", text)
+            self.assertIn("PR PR 1 1.000000 -0.500000", text)
+            self.assertIn("PC PC 1 1.000000 5.000000", text)
 
 
 if __name__ == "__main__":
