@@ -208,9 +208,9 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
             epsilon = float(parts[4])
             new_epsilon = epsilon_map.get((i, j), epsilon)
             parts[4] = f"{new_epsilon:.6f}"
-            if {i, j} == {"C", "P"}:
+            if (i, j) in [("C", "P"), ("P", "C")]:
                 cp_sigma, cp_epsilon = sigma, new_epsilon
-            elif {i, j} == {"X", "P"}:
+            elif (i, j) in [("X", "P"), ("P", "X")]:
                 xp_sigma, xp_epsilon = sigma, new_epsilon
             elif i == "P" and j == "P":
                 pp_sigma = sigma
@@ -326,7 +326,7 @@ def randomize_structures(seed, out_dir):
 
 def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
     if not isinstance(pectin_count, int) or pectin_count <= 0:
-        raise ValueError(f"pectin_count must be a positive integer, got {pectin_count!r}")
+        raise ValueError(f"pectin_count must be a positive integer representing the number of pectin fibers, got {pectin_count!r}")
 
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)

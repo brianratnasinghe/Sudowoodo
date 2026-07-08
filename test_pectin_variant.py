@@ -17,7 +17,7 @@ class PectinVariantTests(unittest.TestCase):
         self.assertEqual(epsilon_map[("PR", "PC")], 2.25)
 
     def test_choose_distributed_positions_requires_at_least_four_beads(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "must have at least 4 beads"):
             sweep._choose_distributed_positions(3)
 
     def test_choose_distributed_positions_sets_exactly_two_and_two(self):
