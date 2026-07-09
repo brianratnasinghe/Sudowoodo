@@ -8,7 +8,7 @@ AFM cell wall builder tool with custom epsilon mapping and ktheta modifications.
 - Calls build_afm_system.py to create afm_system.gro in the output folder.
 
 Usage:
-  python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
+  python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pn 2.0 --epsilon-pc 5.0
 Optional:
   --seed 123456
   --ktheta "120,150,180"    # pectin,cellulose,xyloglucan
@@ -20,11 +20,38 @@ Optional:
 import argparse, shutil, os, re, random, textwrap, subprocess
 from pathlib import Path
 
+PECTIN_NEUTRAL_TYPE = "PN"
+PECTIN_REPULSIVE_TYPE = "PR"
+PECTIN_CROSSLINK_TYPE = "PC"
+DEFAULT_PECTIN_NEUTRAL_EPSILON = 2.0
+DEFAULT_PECTIN_REPULSIVE_EPSILON = -0.5
+DEFAULT_PECTIN_CROSSLINK_EPSILON = 5.0
+DEFAULT_PECTIN_OTHER_PAIR_EPSILON = 2.0
+# GRO files use fixed-width fields; these 0-based slice bounds parse the residue number at 0:5 and residue name at 5:10.
+GRO_RESIDUE_NUMBER_START = 0
+GRO_RESIDUE_NUMBER_END = 5
+GRO_RESIDUE_NAME_START = 5
+GRO_RESIDUE_NAME_END = 10
+MIN_GRO_ATOM_LINE_LENGTH = GRO_RESIDUE_NAME_END
+# Pectin variant atomtypes reuse the base pectin atomtype metadata: atomic number, mass (amu), charge (e), particle type, sigma, and epsilon.
+PECTIN_ATOMTYPE_ATOMIC_NUMBER = 1
+PECTIN_ATOMTYPE_MASS = 26.6
+PECTIN_ATOMTYPE_CHARGE = 0.000
+PECTIN_ATOMTYPE_PARTICLE_TYPE = "A"
+PECTIN_ATOMTYPE_SIGMA = 0.0
+PECTIN_ATOMTYPE_EPSILON = 0.0
+
 def get_args():
     p = argparse.ArgumentParser(description="AFM cell wall builder and sweep tool (custom epsilon mapping)")
     p.add_argument('--out', type=Path, required=True, help="Output folder")
     p.add_argument('--epsilon', type=str, required=True,
                    help="Comma-separated epsilon mapping, e.g. CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4")
+    p.add_argument('--epsilon-pr', type=float, default=DEFAULT_PECTIN_REPULSIVE_EPSILON,
+                   help="Exact epsilon for the PN/PR pectin pair.")
+    p.add_argument('--epsilon-pn', type=float, default=DEFAULT_PECTIN_NEUTRAL_EPSILON,
+                   help="Exact epsilon for the PN/PN pectin pair.")
+    p.add_argument('--epsilon-pc', type=float, default=DEFAULT_PECTIN_CROSSLINK_EPSILON,
+                   help="Exact epsilon for the PN/PC pectin pair.")
     p.add_argument('--ktheta', type=str, 
                    help="Comma-separated ktheta values for pectin,cellulose,xyloglucan. "
                         "Use empty values to keep defaults, e.g. '120,150,180' or ',150,180' or '120,,'")
@@ -98,18 +125,83 @@ def parse_ktheta_values(ktheta_str):
     
     return result
 
-def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
+def build_pectin_variant_epsilon_map(epsilon_pn, epsilon_pr, epsilon_pc):
+    mapping = {
+        (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE): epsilon_pn,
+        (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE): DEFAULT_PECTIN_OTHER_PAIR_EPSILON,
+        (PECTIN_CROSSLINK_TYPE, PECTIN_CROSSLINK_TYPE): DEFAULT_PECTIN_OTHER_PAIR_EPSILON,
+        (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE): epsilon_pr,
+        (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE): epsilon_pc,
+        (PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE): DEFAULT_PECTIN_OTHER_PAIR_EPSILON,
+    }
+    for left, right in list(mapping):
+        mapping[(right, left)] = mapping[(left, right)]
+    return mapping
+
+def build_pectin_nonbond_lines(cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_sigma, pectin_variant_epsilons):
+    if None in (cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_sigma):
+        raise ValueError("Could not derive all required C/X/P nonbond parameters from the base ITP file")
+    out = []
+    for base_type, sigma, epsilon in [("C", cp_sigma, cp_epsilon), ("X", xp_sigma, xp_epsilon)]:
+        for pectin_type in [PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE]:
+            out.append(f"{base_type} {pectin_type} 1 {sigma:.6f} {epsilon:.6f}")
+    for left, right in [
+        (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE),
+        (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE),
+        (PECTIN_CROSSLINK_TYPE, PECTIN_CROSSLINK_TYPE),
+        (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE),
+        (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE),
+        (PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE),
+    ]:
+        out.append(f"{left} {right} 1 {pp_sigma:.6f} {pectin_variant_epsilons[(left, right)]:.6f}")
+    return out
+
+def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilons):
     re_lj = re.compile(r'^(\s*\w+\s+\w+\s+\d+\s+([0-9eE\.\+\-]+)\s+([0-9eE\.\+\-]+))')
     lines = itp_path.read_text().splitlines()
     out = []
     in_nb = False
+    in_atomtypes = False
+    cp_sigma = cp_epsilon = None
+    xp_sigma = xp_epsilon = None
+    pp_sigma = None
+    added_pectin_atomtypes = False
+    added_pectin_nonbond = False
+
+    def _add_pectin_nonbond_params_once():
+        nonlocal added_pectin_nonbond
+        if added_pectin_nonbond:
+            return
+        out.extend(build_pectin_nonbond_lines(
+            cp_sigma,
+            cp_epsilon,
+            xp_sigma,
+            xp_epsilon,
+            pp_sigma,
+            pectin_variant_epsilons,
+        ))
+        added_pectin_nonbond = True
     for line in lines:
+        if line.strip().startswith("[ atomtypes"):
+            in_atomtypes = True
+            out.append(line)
+            continue
+        if in_atomtypes and line.strip().startswith("[") and not line.strip().startswith("[ atomtypes"):
+            in_atomtypes = False
+        parts = line.split()
+        if in_atomtypes and parts and parts[0] == "P" and not added_pectin_atomtypes:
+            out.append(line)
+            for pectin_type in [PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE]:
+                out.append(f"{pectin_type} {PECTIN_ATOMTYPE_ATOMIC_NUMBER} {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
+            added_pectin_atomtypes = True
+            continue
         if '[ nonbond_params' in line:
             in_nb = True
             out.append(line)
             continue
         if in_nb and line.strip().startswith('['):
             in_nb = False
+            _add_pectin_nonbond_params_once()
         if in_nb and re_lj.match(line):
             parts = line.split()
             i, j = parts[0], parts[1]
@@ -117,9 +209,17 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
             epsilon = float(parts[4])
             new_epsilon = epsilon_map.get((i, j), epsilon)
             parts[4] = f"{new_epsilon:.6f}"
+            if (i, j) in [("C", "P"), ("P", "C")]:
+                cp_sigma, cp_epsilon = sigma, new_epsilon
+            elif (i, j) in [("X", "P"), ("P", "X")]:
+                xp_sigma, xp_epsilon = sigma, new_epsilon
+            elif i == "P" and j == "P":
+                pp_sigma = sigma
             out.append(' '.join(parts))
         else:
             out.append(line)
+    if in_nb:
+        _add_pectin_nonbond_params_once()
     new_path.write_text('\n'.join(out) + '\n')
 
 def modify_ktheta_in_itp(itp_path, new_path, ktheta_value=None):
@@ -139,6 +239,81 @@ def modify_ktheta_in_itp(itp_path, new_path, ktheta_value=None):
     
     new_path.write_text('\n'.join(out) + '\n')
 
+def _choose_distributed_positions(total_beads):
+    if total_beads < 4:
+        raise ValueError(f"Pectin template must have at least 4 beads; found {total_beads}")
+    positions = []
+    for quarter in range(4):
+        start = (quarter * total_beads) // 4
+        end = ((quarter + 1) * total_beads) // 4
+        positions.append(random.randrange(start, end))
+    neg_positions = set(random.sample(positions, 2))
+    pos_positions = set(positions) - neg_positions
+    return neg_positions, pos_positions
+
+def _write_randomized_pectin_itp(src_path, dst_path, molecule_name, ktheta_value=None):
+    lines = src_path.read_text().splitlines()
+    out = []
+    in_moleculetype = False
+    in_atoms = False
+    atom_line_indices = []
+    atom_ids = []
+
+    for line in lines:
+        if line.startswith('#define k_theta') and ktheta_value is not None:
+            out.append(f'#define k_theta {ktheta_value}')
+            continue
+        if line.strip().startswith('[moleculetype]'):
+            in_moleculetype = True
+            out.append(line)
+            continue
+        if in_moleculetype and line.strip() and not line.strip().startswith(';'):
+            parts = line.split()
+            parts[0] = molecule_name
+            out.append("  " + " ".join(parts))
+            in_moleculetype = False
+            continue
+        if line.strip().startswith('[atoms]'):
+            in_atoms = True
+            out.append(line)
+            continue
+        if in_atoms and line.strip().startswith('['):
+            in_atoms = False
+        if in_atoms and line.strip() and not line.strip().startswith(';'):
+            atom_line_indices.append(len(out))
+            atom_ids.append(line.split()[0])
+        out.append(line)
+
+    neg_positions, pos_positions = _choose_distributed_positions(len(atom_ids))
+    for idx, out_idx in enumerate(atom_line_indices):
+        parts = out[out_idx].split()
+        if idx in neg_positions:
+            parts[1] = PECTIN_REPULSIVE_TYPE
+        elif idx in pos_positions:
+            parts[1] = PECTIN_CROSSLINK_TYPE
+        else:
+            parts[1] = PECTIN_NEUTRAL_TYPE
+        out[out_idx] = "  " + " ".join(parts)
+
+    dst_path.write_text('\n'.join(out) + '\n')
+
+def count_pectin_fibers_from_gro(gro_path):
+    pectin_residues = set()
+    lines = gro_path.read_text().splitlines()
+    if len(lines) < 3:
+        return 0
+    for line in lines[2:-1]:
+        if len(line) < MIN_GRO_ATOM_LINE_LENGTH:
+            continue
+        try:
+            residue_number = int(line[GRO_RESIDUE_NUMBER_START:GRO_RESIDUE_NUMBER_END])
+        except ValueError:
+            continue
+        residue_name = line[GRO_RESIDUE_NAME_START:GRO_RESIDUE_NAME_END].strip()
+        if residue_name == "Pctn":
+            pectin_residues.add(residue_number)
+    return len(pectin_residues)
+
 def randomize_structures(seed, out_dir):
     for src, dst in [
         ('X.gro', out_dir / 'X.gro'),
@@ -150,35 +325,29 @@ def randomize_structures(seed, out_dir):
     # Example: subprocess.run(["python", "build_afm_system.py", "--seed", str(seed), ...])
     return
 
-def generate_topology(args, out_dir):
-    top_txt = textwrap.dedent(f"""\
-        ;;;;;; AFM-Based Combined Topology
-        #include "toppar_custom/sudowoodo_base.itp"
-        #include "toppar_custom/sudowoodo_xyloglucan.itp"
-        #include "toppar_custom/sudowoodo_pectin.itp"
-        #include "toppar_custom/sudowoodo_cellulose.itp"
+def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
+    if not isinstance(pectin_count, int) or pectin_count <= 0:
+        raise ValueError(f"pectin_count must be a positive integer representing the number of pectin fibers, got {pectin_count!r}")
 
-        [ system ]
-        AFM-Based Cell Wall System
-
-        [ molecules ]
-        Cell      {args.ncell}
-        Xylo      {args.nxylo}
-        Pctn      {args.npctn}
-    """)
-    write_text(out_dir / "afm_system.top", top_txt)
-
-def generate_itps(args, out_dir, epsilon_map, ktheta_values=None):
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)
     
     # Base file (LJ parameters only)
-    scale_epsilon_in_itp(Path('toppar_custom/sudowoodo_base.itp'), toppar_dir / "sudowoodo_base.itp", epsilon_map)
+    pectin_variant_epsilons = build_pectin_variant_epsilon_map(
+        epsilon_pn=args.epsilon_pn,
+        epsilon_pr=args.epsilon_pr,
+        epsilon_pc=args.epsilon_pc,
+    )
+    scale_epsilon_in_itp(
+        Path('toppar_custom/sudowoodo_base.itp'),
+        toppar_dir / "sudowoodo_base.itp",
+        epsilon_map,
+        pectin_variant_epsilons,
+    )
     
     # Polymer-specific files with potential ktheta modification
     itp_files = [
         ('toppar_custom/sudowoodo_xyloglucan.itp', toppar_dir / "sudowoodo_xyloglucan.itp", 'xyloglucan'),
-        ('toppar_custom/sudowoodo_pectin.itp', toppar_dir / "sudowoodo_pectin.itp", 'pectin'),
         ('toppar_custom/sudowoodo_cellulose.itp', toppar_dir / "sudowoodo_cellulose.itp", 'cellulose')
     ]
     
@@ -187,6 +356,16 @@ def generate_itps(args, out_dir, epsilon_map, ktheta_values=None):
     for src, dst, polymer_name in itp_files:
         ktheta_value = ktheta_values.get(polymer_name)
         modify_ktheta_in_itp(Path(src), dst, ktheta_value)
+
+    pectin_template = Path('toppar_custom/sudowoodo_pectin.itp')
+    pectin_ktheta = ktheta_values.get('pectin')
+    for pectin_idx in range(1, pectin_count + 1):
+        _write_randomized_pectin_itp(
+            pectin_template,
+            toppar_dir / f"sudowoodo_pectin_{pectin_idx}.itp",
+            f"Pctn_{pectin_idx}",
+            pectin_ktheta
+        )
 
 def write_mdp_files(args, out_dir):
     def mdp_default_em():
@@ -317,6 +496,7 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
         ======================
         Output directory: {out_dir}
         Epsilon mapping: {eps_map_str}
+        Pectin variant epsilons: PN/PR={args.epsilon_pr} PN/PN={args.epsilon_pn} PN/PC={args.epsilon_pc} other pairs={DEFAULT_PECTIN_OTHER_PAIR_EPSILON}
         Polymer counts: Xylo={args.nxylo}  Pctn={args.npctn}  Cell={args.ncell}
         Seed used: {seed}
     """)
@@ -336,6 +516,7 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
 def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False):
     """
     Call build_afm_system.py with the given seed inside the output folder.
+    The builder writes both afm_system.gro and afm_system.top.
     """
     print(f"[info] Building afm_system.gro using build_afm_system.py ...")
     builder = Path(__file__).parent / "build_afm_system.py"
@@ -361,11 +542,12 @@ def main():
     
     write_log(args.out, seed, args, epsilon_map, ktheta_values)
     randomize_structures(seed, args.out)
-    generate_topology(args, args.out)
-    generate_itps(args, args.out, epsilon_map, ktheta_values)
     write_mdp_files(args, args.out)
     write_run_sh(args, args.out)
     build_afm_system(seed, args.out, args.ktheta, args.multilayer)
+    # build_afm_system.py writes afm_system.gro, which determines how many per-fiber pectin ITPs are needed.
+    pectin_count = count_pectin_fibers_from_gro(args.out / "afm_system.gro")
+    generate_itps(args, args.out, epsilon_map, pectin_count, ktheta_values)
     print(f"[ok] Setup complete in {args.out} (seed={seed})")
 
     if ktheta_values:
