@@ -24,6 +24,8 @@ sigma_lookup = {
 SAFETY = 1.2            # min-distance factor vs. sigma
 TRY_MAIN_CELL = 600     # placement attempts for cellulose (main/off-plane)
 TRY_OTHER = 500         # placement attempts for Xylo/Pctn
+TAIL_ROTATION_MIN = -45.0
+TAIL_ROTATION_MAX = 45.0
 
 # ----------------------------
 # Utilities
@@ -230,11 +232,13 @@ def build(seed, multilayer=False):
         tail.sort(key=lambda t: vol_like(t[0]), reverse=True)
 
         placed_tail = 0
+        pectin_angle = np.random.uniform(TAIL_ROTATION_MIN, TAIL_ROTATION_MAX)
+        print(f"[INFO] Using single pectin angle for layer {layer_idx + 1}: {pectin_angle + layer_rotation:.2f}°")
         for ctype, tpl in tqdm(tail, desc="Xylo+Pctn", ncols=80):
             base = X_coords if ctype == "Xylo" else P_coords
             success = False
             for _try in range(TRY_OTHER):
-                ang = np.random.uniform(-45.0, 45.0)
+                ang = pectin_angle if ctype == "Pctn" else np.random.uniform(TAIL_ROTATION_MIN, TAIL_ROTATION_MAX)
                 rot = rotate_chain(base.copy(), ang + layer_rotation)
                 x = np.random.uniform(0, BOX[0])
                 y = np.random.uniform(0, BOX[1])
