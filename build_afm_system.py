@@ -18,7 +18,7 @@ NUM_PCTN = 2750
 sigma_lookup = {
     "Cell": 3.0,
     "Xylo": 1.5,
-    "Pctn": 0.8
+    "Pctn": 1.0
 }
 
 SAFETY = 1.2            # min-distance factor vs. sigma
