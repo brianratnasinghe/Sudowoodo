@@ -231,7 +231,7 @@ def build(seed, multilayer=False):
 
         placed_tail = 0
         pectin_angle = np.random.uniform(-45.0, 45.0)
-        print("[INFO] Using single pectin angle for layer %d: %.2f°" % (layer_idx + 1, pectin_angle + layer_rotation))
+        print(f"[INFO] Using single pectin angle for layer {layer_idx + 1}: {pectin_angle + layer_rotation:.2f}°")
         for ctype, tpl in tqdm(tail, desc="Xylo+Pctn", ncols=80):
             base = X_coords if ctype == "Xylo" else P_coords
             success = False
