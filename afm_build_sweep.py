@@ -8,8 +8,8 @@ AFM cell wall builder tool with custom epsilon mapping and ktheta modifications.
 - Calls build_afm_system.py to create afm_system.gro in the output folder.
 
 Usage:
-  python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pp 2.0 --epsilon-pc 5.0
-    # --epsilon-pp sets P/P and --epsilon-pc sets PC/PC
+  python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pc 5.0
+    # PP in --epsilon sets P/P and --epsilon-pc sets PC/PC
 Optional:
   --seed 123456
   --ktheta "120,150,180"    # pectin,cellulose,xyloglucan
@@ -24,7 +24,6 @@ from pathlib import Path
 PECTIN_NEUTRAL_TYPE = "P"
 PECTIN_REPULSIVE_TYPE = "PR"
 PECTIN_CROSSLINK_TYPE = "PC"
-DEFAULT_PECTIN_PECTIN_EPSILON = 2.0
 DEFAULT_PECTIN_REPULSIVE_EPSILON = -0.5
 DEFAULT_PECTIN_CROSSLINK_EPSILON = 5.0
 DEFAULT_PECTIN_OTHER_PAIR_EPSILON = 2.0
@@ -51,8 +50,6 @@ def get_args():
                    help="Comma-separated epsilon mapping, e.g. CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4")
     p.add_argument('--epsilon-pr', type=float, default=DEFAULT_PECTIN_REPULSIVE_EPSILON,
                    help="Exact epsilon for the P/PR pectin pair.")
-    p.add_argument('--epsilon-pp', dest='epsilon_pp', type=float, default=DEFAULT_PECTIN_PECTIN_EPSILON,
-                   help="Exact epsilon for the P/P pectin pair.")
     p.add_argument('--epsilon-pc', type=float, default=DEFAULT_PECTIN_CROSSLINK_EPSILON,
                    help="Exact epsilon for the PC/PC pectin pair.")
     p.add_argument('--ktheta', type=str, 
@@ -149,7 +146,6 @@ def build_pectin_nonbond_lines(cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_si
         for pectin_type in [PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE]:
             out.append(f"{base_type} {pectin_type} 1 {sigma:.6f} {epsilon:.6f}")
     for left, right in [
-        (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE),
         (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE),
         (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE),
         (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE),
@@ -224,7 +220,6 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
                 xp_sigma, xp_epsilon = sigma, new_epsilon
             elif i == "P" and j == "P":
                 pp_sigma = sigma
-                continue
             out.append(' '.join(parts))
         else:
             out.append(line)
@@ -433,7 +428,7 @@ def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
     
     # Base file (LJ parameters only)
     pectin_variant_epsilons = build_pectin_variant_epsilon_map(
-        epsilon_pp=args.epsilon_pp,
+        epsilon_pp=epsilon_map[(PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE)],
         epsilon_pr=args.epsilon_pr,
         epsilon_pc=args.epsilon_pc,
     )
@@ -595,7 +590,7 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
         ======================
         Output directory: {out_dir}
         Epsilon mapping: {eps_map_str}
-        Pectin variant epsilons: P/PR={args.epsilon_pr} P/P={args.epsilon_pp} PC/PC={args.epsilon_pc} other mixed variant pairs={DEFAULT_PECTIN_OTHER_PAIR_EPSILON}
+        Pectin variant epsilons: P/PR={args.epsilon_pr} P/P={epsilon_map[(PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE)]} PC/PC={args.epsilon_pc} other mixed variant pairs={DEFAULT_PECTIN_OTHER_PAIR_EPSILON}
         Polymer counts: Xylo={args.nxylo}  Pctn={args.npctn}  Cell={args.ncell}
         Seed used: {seed}
     """)

@@ -57,7 +57,7 @@ class PectinVariantTests(unittest.TestCase):
             self.assertIn("C P 1 1.837000 0.700000", text)
             self.assertIn("C PR 1 1.837000 0.700000", text)
             self.assertIn("C PC 1 1.837000 0.700000", text)
-            self.assertIn("P P 1 1.000000 2.000000", text)
+            self.assertIn("P P 1 1.000000 1.000000", text)
             self.assertIn("P PR 1 1.000000 -0.500000", text)
             self.assertIn("P PC 1 1.000000 2.000000", text)
             self.assertIn("PR PR 1 1.000000 2.000000", text)
