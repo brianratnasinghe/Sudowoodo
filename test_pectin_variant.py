@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import afm_build_sweep as sweep
+import build_sweep as sweep
 
 
 class PectinVariantTests(unittest.TestCase):

@@ -16,7 +16,7 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
 
 2. **Run the builder script:**  
    ```bash
-   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pc 5.0
+   python build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pc 5.0
    ```
 
    - `--out` specifies the output folder.
@@ -46,11 +46,11 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
 The builder supports creating a 4-layer fiber system using the `--multilayer` flag:
 
 ```bash
-# For afm_build_sweep.py
-python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pc 5.0 --multilayer
+# For build_sweep.py
+python build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pc 5.0 --multilayer
 
-# Or directly with build_afm_system.py
-python build_afm_system.py --seed 12345 --multilayer
+# Or directly with build_system.py
+python build_system.py --seed 12345 --multilayer
 ```
 
 When `--multilayer` is set:
@@ -67,8 +67,8 @@ When `--multilayer` is set:
 
 ## Advanced
 
-- Edit `afm_build_sweep.py` to add more control, config file support, or extend with new bead types.
-- All code is pure Python 3 and requires only the standard library (plus numpy, scipy, tqdm for build_afm_system.py).
+- Edit `build_sweep.py` to add more control, config file support, or extend with new bead types.
+- All code is pure Python 3 and requires only the standard library (plus numpy, scipy, tqdm for build_system.py).
 
 ## Citation
 

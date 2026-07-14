@@ -5,10 +5,10 @@ AFM cell wall builder tool with custom epsilon mapping and ktheta modifications.
 - Modifies sudowoodo_base.itp with user-specified epsilon for bead pairs.
 - Modifies polymer .itp files with user-specified ktheta values.
 - Generates topology, .mdp files, run.sh, and afm_build.log.
-- Calls build_afm_system.py to create afm_system.gro in the output folder.
+- Calls build_system.py to create afm_system.gro in the output folder.
 
 Usage:
-  python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pc 5.0
+  python build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pc 5.0
     # PP in --epsilon sets P/P and --epsilon-pc sets PC/PC
 Optional:
   --seed 123456
@@ -423,7 +423,7 @@ def randomize_structures(seed, out_dir):
     ]:
         copy_file(src, dst)
     # Optionally: call your actual randomization logic here, passing seed as needed
-    # Example: subprocess.run(["python", "build_afm_system.py", "--seed", str(seed), ...])
+    # Example: subprocess.run(["python", "build_system.py", "--seed", str(seed), ...])
     return
 
 def generate_itps(args, out_dir, epsilon_map, pectin_count, ktheta_values=None):
@@ -614,15 +614,15 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
     
     write_text(out_dir / "afm_build.log", log_txt)
 
-def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False):
+def build_system(seed, out_dir=None, ktheta_str=None, multilayer=False):
     """
-    Call build_afm_system.py with the given seed inside the output folder.
+    Call build_system.py with the given seed inside the output folder.
     The builder writes both afm_system.gro and afm_system.top.
     """
-    print(f"[info] Building afm_system.gro using build_afm_system.py ...")
-    builder = Path(__file__).parent / "build_afm_system.py"
+    print(f"[info] Building afm_system.gro using build_system.py ...")
+    builder = Path(__file__).parent / "build_system.py"
     if not builder.exists():
-        raise FileNotFoundError(f"Could not find build_afm_system.py in {builder.parent}")
+        raise FileNotFoundError(f"Could not find build_system.py in {builder.parent}")
 
     cmd = ["python", str(builder), "--seed", str(seed)]
     if ktheta_str:
@@ -645,8 +645,8 @@ def main():
     randomize_structures(seed, args.out)
     write_mdp_files(args, args.out)
     write_run_sh(args, args.out)
-    build_afm_system(seed, args.out, args.ktheta, args.multilayer)
-    # build_afm_system.py writes afm_system.gro, which determines how many per-fiber pectin ITPs are needed.
+    build_system(seed, args.out, args.ktheta, args.multilayer)
+    # build_system.py writes afm_system.gro, which determines how many per-fiber pectin ITPs are needed.
     pectin_count = count_pectin_fibers_from_gro(args.out / "afm_system.gro")
     generate_itps(args, args.out, epsilon_map, pectin_count, ktheta_values)
     update_gro_pectin_atomnames(args.out / "afm_system.gro", args.out / "toppar_custom")
