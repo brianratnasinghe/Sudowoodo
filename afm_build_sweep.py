@@ -142,6 +142,9 @@ def build_pectin_nonbond_lines(cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_si
     if None in (cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_sigma):
         raise ValueError("Could not derive all required C/X/P nonbond parameters from the base ITP file")
     out = []
+    # Neutral pectin uses the base P type, so C/P, X/P, and P/P are kept from
+    # the base ITP. Only the additional PR/PC atomtypes and mixed/special pairs
+    # are appended here.
     for base_type, sigma, epsilon in [("C", cp_sigma, cp_epsilon), ("X", xp_sigma, xp_epsilon)]:
         for pectin_type in [PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE]:
             out.append(f"{base_type} {pectin_type} 1 {sigma:.6f} {epsilon:.6f}")
@@ -220,6 +223,8 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
                 xp_sigma, xp_epsilon = sigma, new_epsilon
             elif i == "P" and j == "P":
                 pp_sigma = sigma
+            # Keep base neutral P/P in the output; only PR/PC-specific pairs
+            # are appended later by build_pectin_nonbond_lines().
             out.append(' '.join(parts))
         else:
             out.append(line)
@@ -345,6 +350,8 @@ def _get_atom_types_from_itp(itp_path):
 
 
 def _parse_pectin_atom_index(atom_name):
+    # Check longer prefixes first so PC9/PR8 are not consumed by the neutral P
+    # prefix before their numeric suffix is parsed.
     for prefix in (PECTIN_CROSSLINK_TYPE, PECTIN_REPULSIVE_TYPE, PECTIN_NEUTRAL_TYPE):
         if atom_name.startswith(prefix):
             try:

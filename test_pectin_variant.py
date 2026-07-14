@@ -79,6 +79,28 @@ class PectinVariantTests(unittest.TestCase):
                 {1: "P", 2: "PR", 3: "PC"},
             )
 
+    def test_write_randomized_pectin_itp_keeps_neutral_p_and_marks_pr_pc_names(self):
+        with TemporaryDirectory() as td:
+            random.seed(7)
+            output_path = Path(td) / "pectin.itp"
+            sweep._write_randomized_pectin_itp(
+                Path(__file__).resolve().parent / "toppar_custom" / "sudowoodo_pectin.itp",
+                output_path,
+                "Pctn_1",
+            )
+            atom_types = sweep._get_atom_types_from_itp(output_path)
+            atom_lines = [
+                line.split()
+                for line in output_path.read_text().splitlines()
+                if line.strip() and not line.strip().startswith(';') and line.strip()[0].isdigit()
+            ]
+            atom_names_by_id = {int(parts[0]): parts[4] for parts in atom_lines[:30]}
+            self.assertTrue(any(atom_type == "P" for atom_type in atom_types.values()))
+            self.assertTrue(any(atom_type == "PR" for atom_type in atom_types.values()))
+            self.assertTrue(any(atom_type == "PC" for atom_type in atom_types.values()))
+            for atom_id, atom_type in atom_types.items():
+                self.assertEqual(atom_names_by_id[atom_id], f"{atom_type}{atom_id}")
+
     def test_update_gro_pectin_atomnames_uses_per_fiber_itp_types(self):
         gro = """Test
     6
