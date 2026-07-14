@@ -35,6 +35,19 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
      - Ready-to-run MDP files (`EM.mdp`, `EQ.mdp`, `production.mdp`)
      - `run.sh` script for GROMACS
 
+### Monomeric Pectin Sweep
+
+For a sweep with 100 identical unbonded pectin beads and a pectin-pectin epsilon range from `0.1` to `5.0` in `0.1` increments, use:
+
+```bash
+python build_pectin_monomer_sweep.py --out pectin_monomer_sweep
+```
+
+This creates one case directory per epsilon value, each with:
+- `100` single-bead pectin molecules (no bonds, so they are not fibers)
+- a `production.mdp` configured for a `100 ns` production run
+- a case-specific `P-P` epsilon in `toppar_custom/sudowoodo_base.itp`
+
 4. **Run your simulation:**  
    ```bash
    cd <your_output_folder>
