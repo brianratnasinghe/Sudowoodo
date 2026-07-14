@@ -7,13 +7,13 @@ import afm_build_sweep as sweep
 
 
 class PectinVariantTests(unittest.TestCase):
-    def test_build_pectin_variant_epsilon_map_uses_exact_pn_pairs_and_defaults_others_to_two(self):
+    def test_build_pectin_variant_epsilon_map_uses_exact_requested_pairs_and_defaults_others_to_two(self):
         epsilon_map = sweep.build_pectin_variant_epsilon_map(2.0, -0.5, 5.0)
-        self.assertEqual(epsilon_map[("PN", "PN")], 2.0)
-        self.assertEqual(epsilon_map[("PN", "PR")], -0.5)
-        self.assertEqual(epsilon_map[("PN", "PC")], 5.0)
+        self.assertEqual(epsilon_map[("P", "P")], 2.0)
+        self.assertEqual(epsilon_map[("P", "PR")], -0.5)
+        self.assertEqual(epsilon_map[("P", "PC")], 2.0)
         self.assertEqual(epsilon_map[("PR", "PR")], 2.0)
-        self.assertEqual(epsilon_map[("PC", "PC")], 2.0)
+        self.assertEqual(epsilon_map[("PC", "PC")], 5.0)
         self.assertEqual(epsilon_map[("PR", "PC")], 2.0)
 
     def test_choose_distributed_positions_requires_at_least_four_beads(self):
@@ -43,7 +43,7 @@ class PectinVariantTests(unittest.TestCase):
             gro_path.write_text(gro)
             self.assertEqual(sweep.count_pectin_fibers_from_gro(gro_path), 2)
 
-    def test_scale_epsilon_in_itp_writes_new_pectin_variant_types(self):
+    def test_scale_epsilon_in_itp_writes_only_pr_and_pc_atomtypes_and_expected_pairs(self):
         with TemporaryDirectory() as td:
             output_path = Path(td) / "scaled.itp"
             sweep.scale_epsilon_in_itp(
@@ -53,14 +53,15 @@ class PectinVariantTests(unittest.TestCase):
                 sweep.build_pectin_variant_epsilon_map(2.0, -0.5, 5.0),
             )
             text = output_path.read_text()
-            self.assertIn("C PN 1 1.837000 0.700000", text)
+            self.assertNotIn(" PN ", text)
+            self.assertIn("C P 1 1.837 0.700000", text)
             self.assertIn("C PR 1 1.837000 0.700000", text)
             self.assertIn("C PC 1 1.837000 0.700000", text)
-            self.assertIn("PN PN 1 1.000000 2.000000", text)
-            self.assertIn("PN PR 1 1.000000 -0.500000", text)
-            self.assertIn("PN PC 1 1.000000 5.000000", text)
+            self.assertIn("P P 1 1.0 1.000000", text)
+            self.assertIn("P PR 1 1.000000 -0.500000", text)
+            self.assertIn("P PC 1 1.000000 2.000000", text)
             self.assertIn("PR PR 1 1.000000 2.000000", text)
-            self.assertIn("PC PC 1 1.000000 2.000000", text)
+            self.assertIn("PC PC 1 1.000000 5.000000", text)
 
 
 if __name__ == "__main__":
