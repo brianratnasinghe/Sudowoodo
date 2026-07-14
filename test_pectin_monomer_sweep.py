@@ -21,9 +21,13 @@ class PectinMonomerSweepTests(unittest.TestCase):
         )
 
     def test_generate_positions_returns_requested_count(self):
-        positions = sweep.generate_positions(100, (40.0, 40.0, 40.0), 3.5)
+        box = (40.0, 40.0, 40.0)
+        positions = sweep.generate_positions(100, box, 3.5)
         self.assertEqual(len(positions), 100)
-        self.assertTrue(all(0.0 <= x <= 40.0 and 0.0 <= y <= 40.0 and 0.0 <= z <= 40.0 for x, y, z in positions))
+        self.assertTrue(
+            all(0.0 <= x <= box[0] and 0.0 <= y <= box[1] and 0.0 <= z <= box[2]
+                for x, y, z in positions)
+        )
 
     def test_build_case_writes_unbonded_monomer_sweep_files(self):
         args = Namespace(
