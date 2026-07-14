@@ -375,8 +375,11 @@ def update_gro_pectin_atomnames(gro_path, toppar_dir):
         except ValueError:
             out.append(line)
             continue
-        # GRO atom name occupies chars 10-14 (5 chars, right-justified)
+        # GRO atom name occupies positions 10:15 (5 chars, right-justified)
         atom_name = line[10:15].strip()
+        if not atom_name.startswith('P'):
+            out.append(line)
+            continue
         try:
             atom_idx = int(atom_name[1:])  # strip leading 'P', parse index
         except (ValueError, IndexError):
