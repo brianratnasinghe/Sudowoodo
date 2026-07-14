@@ -32,6 +32,8 @@ GRO_RESIDUE_NUMBER_START = 0
 GRO_RESIDUE_NUMBER_END = 5
 GRO_RESIDUE_NAME_START = 5
 GRO_RESIDUE_NAME_END = 10
+GRO_ATOM_NAME_START = 10
+GRO_ATOM_NAME_END = 15
 MIN_GRO_ATOM_LINE_LENGTH = GRO_RESIDUE_NAME_END
 # Pectin variant atomtypes reuse the base pectin atomtype metadata: atomic number, mass (amu), charge (e), particle type, sigma, and epsilon.
 PECTIN_ATOMTYPE_ATOMIC_NUMBER = 1
@@ -191,7 +193,12 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
         if in_atomtypes and parts and parts[0] == "P" and not added_pectin_atomtypes:
             out.append(line)
             for pectin_type in [PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE]:
-                out.append(f"{pectin_type} {PECTIN_ATOMTYPE_ATOMIC_NUMBER} {PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} {PECTIN_ATOMTYPE_PARTICLE_TYPE} {PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}")
+                out.append(
+                    f"{pectin_type} {PECTIN_ATOMTYPE_ATOMIC_NUMBER} "
+                    f"{PECTIN_ATOMTYPE_MASS} {PECTIN_ATOMTYPE_CHARGE:.3f} "
+                    f"{PECTIN_ATOMTYPE_PARTICLE_TYPE} "
+                    f"{PECTIN_ATOMTYPE_SIGMA:.1f} {PECTIN_ATOMTYPE_EPSILON:.1f}"
+                )
             added_pectin_atomtypes = True
             continue
         if '[ nonbond_params' in line:
@@ -374,8 +381,7 @@ def update_gro_pectin_atomnames(gro_path, toppar_dir):
         except ValueError:
             out.append(line)
             continue
-        # GRO atom name occupies positions 10:15 (5 chars, right-justified)
-        atom_name = line[10:15].strip()
+        atom_name = line[GRO_ATOM_NAME_START:GRO_ATOM_NAME_END].strip()
         if not atom_name.startswith('P'):
             out.append(line)
             continue
@@ -387,7 +393,11 @@ def update_gro_pectin_atomnames(gro_path, toppar_dir):
         bead_type = _types_for_residue(residue_number).get(atom_idx)
         if bead_type:
             new_name = f"{bead_type}{atom_idx}"
-            line = line[:10] + f"{new_name:>5}" + line[15:]
+            line = (
+                line[:GRO_ATOM_NAME_START]
+                + f"{new_name:>5}"
+                + line[GRO_ATOM_NAME_END:]
+            )
         out.append(line)
     out.append(lines[-1])
     gro_path.write_text('\n'.join(out) + '\n')

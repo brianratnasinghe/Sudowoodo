@@ -63,6 +63,66 @@ class PectinVariantTests(unittest.TestCase):
             self.assertIn("PR PR 1 1.000000 2.000000", text)
             self.assertIn("PC PC 1 1.000000 5.000000", text)
 
+    def test_get_atom_types_from_itp_reads_p_pr_and_pc_types(self):
+        itp = """[atoms]
+  1 P 1 Pctn P1 1 0
+  2 PR 1 Pctn PR2 2 0
+  3 PC 1 Pctn PC3 3 0
+
+[bonds]
+"""
+        with TemporaryDirectory() as td:
+            itp_path = Path(td) / "pectin.itp"
+            itp_path.write_text(itp)
+            self.assertEqual(
+                sweep._get_atom_types_from_itp(itp_path),
+                {1: "P", 2: "PR", 3: "PC"},
+            )
+
+    def test_update_gro_pectin_atomnames_uses_per_fiber_itp_types(self):
+        gro = """Test
+    6
+    1Pctn    P1    1   0.000   0.000   0.000
+    1Pctn    P2    2   0.100   0.100   0.100
+    1Pctn    P3    3   0.200   0.200   0.200
+    2Pctn    P1    1   0.300   0.300   0.300
+    2Pctn    P2    2   0.400   0.400   0.400
+    2Pctn    P3    3   0.500   0.500   0.500
+   1.00000   1.00000   1.00000
+"""
+        itp_1 = """[atoms]
+  1 P 1 Pctn P1 1 0
+  2 PR 1 Pctn PR2 2 0
+  3 PC 1 Pctn PC3 3 0
+
+[bonds]
+"""
+        itp_2 = """[atoms]
+  1 PC 1 Pctn PC1 1 0
+  2 P 1 Pctn P2 2 0
+  3 PR 1 Pctn PR3 3 0
+
+[bonds]
+"""
+        with TemporaryDirectory() as td:
+            td = Path(td)
+            gro_path = td / "afm_system.gro"
+            toppar_dir = td / "toppar_custom"
+            toppar_dir.mkdir()
+            gro_path.write_text(gro)
+            (toppar_dir / "sudowoodo_pectin_1.itp").write_text(itp_1)
+            (toppar_dir / "sudowoodo_pectin_2.itp").write_text(itp_2)
+
+            sweep.update_gro_pectin_atomnames(gro_path, toppar_dir)
+
+            updated = gro_path.read_text()
+            self.assertIn("1Pctn    P1", updated)
+            self.assertIn("1Pctn   PR2", updated)
+            self.assertIn("1Pctn   PC3", updated)
+            self.assertIn("2Pctn   PC1", updated)
+            self.assertIn("2Pctn    P2", updated)
+            self.assertIn("2Pctn   PR3", updated)
+
 
 if __name__ == "__main__":
     unittest.main()
