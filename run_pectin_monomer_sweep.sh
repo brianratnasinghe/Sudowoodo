@@ -27,7 +27,7 @@ fi
 
 echo "[info] Found ${#CASES[@]} case(s) in $SWEEP_DIR"
 
-FAILED=0
+HAS_FAILED=0
 for CASE_DIR in "${CASES[@]}"; do
     if [[ ! -f "$CASE_DIR/run.sh" ]]; then
         echo "[skip] No run.sh in $CASE_DIR — skipping"
@@ -39,12 +39,12 @@ for CASE_DIR in "${CASES[@]}"; do
         echo "[done] $(date '+%Y-%m-%d %H:%M:%S')  $CASE_DIR"
     else
         echo "[fail] $(date '+%Y-%m-%d %H:%M:%S')  $CASE_DIR — non-zero exit, stopping." >&2
-        FAILED=1
+        HAS_FAILED=1
         break
     fi
 done
 
-if [[ $FAILED -eq 0 ]]; then
+if [[ $HAS_FAILED -eq 0 ]]; then
     echo "[info] All cases completed successfully."
 else
     exit 1
