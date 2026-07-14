@@ -54,10 +54,10 @@ class PectinVariantTests(unittest.TestCase):
             )
             text = output_path.read_text()
             self.assertNotIn(" PN ", text)
-            self.assertIn("C P 1 1.837 0.700000", text)
+            self.assertIn("C P 1 1.837000 0.700000", text)
             self.assertIn("C PR 1 1.837000 0.700000", text)
             self.assertIn("C PC 1 1.837000 0.700000", text)
-            self.assertIn("P P 1 1.0 1.000000", text)
+            self.assertIn("P P 1 1.000000 2.000000", text)
             self.assertIn("P PR 1 1.000000 -0.500000", text)
             self.assertIn("P PC 1 1.000000 2.000000", text)
             self.assertIn("PR PR 1 1.000000 2.000000", text)
@@ -114,6 +114,7 @@ class PectinVariantTests(unittest.TestCase):
             (toppar_dir / "sudowoodo_pectin_2.itp").write_text(itp_2)
 
             sweep.update_gro_pectin_atomnames(gro_path, toppar_dir)
+            sweep.update_gro_pectin_atomnames(gro_path, toppar_dir)
 
             updated = gro_path.read_text()
             self.assertIn("1Pctn    P1", updated)
@@ -122,6 +123,12 @@ class PectinVariantTests(unittest.TestCase):
             self.assertIn("2Pctn   PC1", updated)
             self.assertIn("2Pctn    P2", updated)
             self.assertIn("2Pctn   PR3", updated)
+
+    def test_parse_pectin_atom_index_handles_p_pr_and_pc_names(self):
+        self.assertEqual(sweep._parse_pectin_atom_index("P7"), 7)
+        self.assertEqual(sweep._parse_pectin_atom_index("PR8"), 8)
+        self.assertEqual(sweep._parse_pectin_atom_index("PC9"), 9)
+        self.assertIsNone(sweep._parse_pectin_atom_index("X1"))
 
 
 if __name__ == "__main__":

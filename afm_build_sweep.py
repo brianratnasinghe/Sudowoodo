@@ -9,6 +9,7 @@ AFM cell wall builder tool with custom epsilon mapping and ktheta modifications.
 
 Usage:
   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pp 2.0 --epsilon-pc 5.0
+    # --epsilon-pp sets P/P and --epsilon-pc sets PC/PC
 Optional:
   --seed 123456
   --ktheta "120,150,180"    # pectin,cellulose,xyloglucan
@@ -148,6 +149,7 @@ def build_pectin_nonbond_lines(cp_sigma, cp_epsilon, xp_sigma, xp_epsilon, pp_si
         for pectin_type in [PECTIN_REPULSIVE_TYPE, PECTIN_CROSSLINK_TYPE]:
             out.append(f"{base_type} {pectin_type} 1 {sigma:.6f} {epsilon:.6f}")
     for left, right in [
+        (PECTIN_NEUTRAL_TYPE, PECTIN_NEUTRAL_TYPE),
         (PECTIN_NEUTRAL_TYPE, PECTIN_REPULSIVE_TYPE),
         (PECTIN_NEUTRAL_TYPE, PECTIN_CROSSLINK_TYPE),
         (PECTIN_REPULSIVE_TYPE, PECTIN_REPULSIVE_TYPE),
@@ -214,6 +216,7 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
             sigma = float(parts[3])
             epsilon = float(parts[4])
             new_epsilon = epsilon_map.get((i, j), epsilon)
+            parts[3] = f"{sigma:.6f}"
             parts[4] = f"{new_epsilon:.6f}"
             if (i, j) in [("C", "P"), ("P", "C")]:
                 cp_sigma, cp_epsilon = sigma, new_epsilon
@@ -221,6 +224,7 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map, pectin_variant_epsilon
                 xp_sigma, xp_epsilon = sigma, new_epsilon
             elif i == "P" and j == "P":
                 pp_sigma = sigma
+                continue
             out.append(' '.join(parts))
         else:
             out.append(line)
@@ -345,6 +349,16 @@ def _get_atom_types_from_itp(itp_path):
     return atom_types
 
 
+def _parse_pectin_atom_index(atom_name):
+    for prefix in (PECTIN_CROSSLINK_TYPE, PECTIN_REPULSIVE_TYPE, PECTIN_NEUTRAL_TYPE):
+        if atom_name.startswith(prefix):
+            try:
+                return int(atom_name[len(prefix):])
+            except ValueError:
+                return None
+    return None
+
+
 def update_gro_pectin_atomnames(gro_path, toppar_dir):
     """
     Rewrite pectin atom names in the GRO file to reflect bead types from the
@@ -382,12 +396,8 @@ def update_gro_pectin_atomnames(gro_path, toppar_dir):
             out.append(line)
             continue
         atom_name = line[GRO_ATOM_NAME_START:GRO_ATOM_NAME_END].strip()
-        if not atom_name.startswith('P'):
-            out.append(line)
-            continue
-        try:
-            atom_idx = int(atom_name[1:])  # strip leading 'P', parse index
-        except (ValueError, IndexError):
+        atom_idx = _parse_pectin_atom_index(atom_name)
+        if atom_idx is None:
             out.append(line)
             continue
         bead_type = _types_for_residue(residue_number).get(atom_idx)
