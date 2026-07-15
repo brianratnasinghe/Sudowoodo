@@ -5,7 +5,7 @@ import argparse
 import random
 import re
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Tuple, Union
 
 EPSILON_STEP = 0.1
 EPSILON_STEP_COUNT = 50
@@ -36,7 +36,7 @@ CORE_NONBOND_PARAMS = (
 )
 
 
-Assignment = Dict[str, float | int | str]
+Assignment = Dict[str, Union[float, int, str]]
 AssignmentMap = Dict[int, Dict[int, Assignment]]
 
 
