@@ -36,6 +36,12 @@ def start_frame_index(n_frames: int, last_fraction: float) -> int:
     return int(n_frames * (1.0 - last_fraction))
 
 
+def cutoff_angstrom(cutoff_nm: float) -> float:
+    if cutoff_nm <= 0:
+        raise ValueError("CUTOFF_NM must be positive")
+    return cutoff_nm * 10.0
+
+
 def load_dependencies():
     try:
         import matplotlib.pyplot as plt
@@ -67,11 +73,12 @@ def analyze_case(case_dir: Path, cutoff_nm: float, last_fraction: float, atom_se
 
     trajectory = universe.trajectory
     start = start_frame_index(len(trajectory), last_fraction)
+    cutoff_a = cutoff_angstrom(cutoff_nm)
     frame_means = []
 
-    for _ in trajectory[start:]:
-        distances = distance_array(atoms.positions, atoms.positions, box=trajectory.ts.dimensions)
-        neighbor_mask = distances <= cutoff_nm
+    for ts in trajectory[start:]:
+        distances = distance_array(atoms.positions, atoms.positions, box=ts.dimensions)
+        neighbor_mask = distances <= cutoff_a
         np.fill_diagonal(neighbor_mask, False)
         per_bead_counts = neighbor_mask.sum(axis=1)
         frame_means.append(float(per_bead_counts.mean()))

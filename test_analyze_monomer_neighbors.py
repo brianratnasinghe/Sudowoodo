@@ -31,6 +31,11 @@ class AnalyzeMonomerNeighborsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             analysis.start_frame_index(10, 1.5)
 
+    def test_cutoff_angstrom_converts_nm_to_angstrom(self):
+        self.assertEqual(analysis.cutoff_angstrom(5.0), 50.0)
+        with self.assertRaises(ValueError):
+            analysis.cutoff_angstrom(0)
+
 
 if __name__ == "__main__":
     unittest.main()
