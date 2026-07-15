@@ -27,6 +27,8 @@ class AnalyzeMonomerNeighborsTests(unittest.TestCase):
 
     def test_start_frame_index_validates_fraction(self):
         with self.assertRaises(ValueError):
+            analysis.start_frame_index(0, 0.25)
+        with self.assertRaises(ValueError):
             analysis.start_frame_index(10, 0)
         with self.assertRaises(ValueError):
             analysis.start_frame_index(10, 1.5)

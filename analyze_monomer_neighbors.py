@@ -47,17 +47,17 @@ def load_dependencies():
         import matplotlib.pyplot as plt
         import MDAnalysis as mda
         import numpy as np
-        from MDAnalysis.lib.distances import distance_array
+        from MDAnalysis.lib.distances import self_distance_array
     except ImportError as exc:
         raise SystemExit(
             "This script requires MDAnalysis, matplotlib, and numpy. "
             "Install them before running."
         ) from exc
-    return mda, np, plt, distance_array
+    return mda, np, plt, self_distance_array
 
 
 def analyze_case(case_dir: Path, cutoff_nm: float, last_fraction: float, atom_selection: str) -> float:
-    mda, np, _, distance_array = load_dependencies()
+    mda, np, _, self_distance_array = load_dependencies()
 
     topology_path = case_dir / TOPOLOGY_FILENAME
     trajectory_path = case_dir / TRAJECTORY_FILENAME
@@ -75,12 +75,18 @@ def analyze_case(case_dir: Path, cutoff_nm: float, last_fraction: float, atom_se
     start = start_frame_index(len(trajectory), last_fraction)
     cutoff_a = cutoff_angstrom(cutoff_nm)
     frame_means = []
+    n_atoms = len(atoms)
+    upper_rows, upper_cols = np.triu_indices(n_atoms, k=1)
 
     for ts in trajectory[start:]:
-        distances = distance_array(atoms.positions, atoms.positions, box=ts.dimensions)
-        neighbor_mask = distances <= cutoff_a
-        np.fill_diagonal(neighbor_mask, False)
-        per_bead_counts = neighbor_mask.sum(axis=1)
+        distances = self_distance_array(atoms.positions, box=ts.dimensions)
+        within_cutoff = distances <= cutoff_a
+        pair_rows = upper_rows[within_cutoff]
+        pair_cols = upper_cols[within_cutoff]
+        per_bead_counts = np.bincount(
+            np.concatenate((pair_rows, pair_cols)),
+            minlength=n_atoms,
+        )
         frame_means.append(float(per_bead_counts.mean()))
 
     if not frame_means:
@@ -88,7 +94,7 @@ def analyze_case(case_dir: Path, cutoff_nm: float, last_fraction: float, atom_se
     return sum(frame_means) / len(frame_means)
 
 
-def plot_results(root_dir: Path, epsilons: list[float], averages: list[float]) -> Path:
+def plot_results(root_dir: Path, epsilons: list[float], averages: list[float], cutoff_nm: float) -> Path:
     _, _, plt, _ = load_dependencies()
 
     output_path = root_dir / OUTPUT_PNG
@@ -96,7 +102,7 @@ def plot_results(root_dir: Path, epsilons: list[float], averages: list[float]) -
     plt.plot(epsilons, averages, marker="o")
     plt.xlabel("Epsilon (kJ/mol)")
     plt.ylabel("Average nearest neighbors")
-    plt.title(f"Nearest neighbors within {CUTOFF_NM} nm")
+    plt.title(f"Nearest neighbors within {cutoff_nm} nm")
     plt.tight_layout()
     plt.savefig(output_path, dpi=300)
     plt.close()
@@ -118,7 +124,7 @@ def main() -> int:
         averages.append(average_neighbors)
         print(f"{case_dir.name}: epsilon={epsilon:.3f}, average nearest neighbors={average_neighbors:.6f}")
 
-    output_path = plot_results(ROOT_DIR, epsilons, averages)
+    output_path = plot_results(ROOT_DIR, epsilons, averages, CUTOFF_NM)
     print(f"Saved plot to {output_path.resolve()}")
     return 0
 
