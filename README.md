@@ -16,17 +16,32 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
 
 2. **Run the builder script:**  
    ```bash
-   python build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pc 5.0
+   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
    ```
 
    - `--out` specifies the output folder.
    - `--epsilon` sets custom epsilon (LJ strength) for the base C/X/P bead pairs. `PP` in `--epsilon` sets the `P/P` (neutral pectin) pair.
-   - `--epsilon-pr` sets the exact epsilon for the `P/PR` (neutral/repulsive) pectin pair.
-   - `--epsilon-pc` sets the exact epsilon for the `PC/PC` (crosslink/crosslink) pectin pair.
-   - The remaining mixed variant pectin-pair epsilon values (`PR/PR`, `P/PC`, and `PR/PC`) are fixed at `2.0`.
    - Optionally add `--seed 12345` for reproducible randomization.
    - Optionally add `--multilayer` to generate a 4-layer fiber system (see below).
    - Optionally add `--deform "0 0 0.0001 0 0 0"` to write a deformation tensor into `production.mdp` for z-axis loading.
+
+### Per-Bead Pectin Variant Builder
+
+For per-bead pectin epsilon assignments in `0.1` steps (`0.1` to `5.0`), use:
+
+```bash
+python build_sweep.py --out run_$(date +%s)
+```
+
+Optional flags:
+- `--chains` to set the number of pectin chains to assign (default `1`)
+- `--seed` for reproducible assignments
+- `--pectin-itp-template` to override the pectin template path (default `toppar_custom/sudowoodo_pectin.itp`)
+
+This writes:
+- `sudowoodo_base.itp` (per-bead pectin atomtypes and nonbonded parameters)
+- `sudowoodo_pectin.itp` (copied template)
+- `pectin_assignment_report.txt` (sorted assignment report)
 
 3. **Output structure:**  
    - Folder with all required files:
@@ -108,8 +123,8 @@ This means:
 The builder supports creating a 4-layer fiber system using the `--multilayer` flag:
 
 ```bash
-# For build_sweep.py
-python build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --epsilon-pr -0.5 --epsilon-pc 5.0 --multilayer
+# For afm_build_sweep.py
+python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --multilayer
 
 # Or directly with build_system.py
 python build_system.py --seed 12345 --multilayer
@@ -130,6 +145,7 @@ When `--multilayer` is set:
 ## Advanced
 
 - Edit `build_sweep.py` to add more control, config file support, or extend with new bead types.
+- `build_sweep.py` avoids `type | type` runtime aliases so it works on Python versions that do not support that syntax in evaluated type expressions.
 - All code is pure Python 3 and requires only the standard library (plus numpy, scipy, tqdm for build_system.py).
 
 ## Citation
