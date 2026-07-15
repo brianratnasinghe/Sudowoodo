@@ -65,15 +65,18 @@ def _epsilon_step_code(epsilon: float) -> str:
     return f"{epsilon_to_step_index(epsilon):02d}"
 
 
+def validate_pectin_epsilon(epsilon: float) -> float:
+    classify_pectin_epsilon(epsilon)
+    return epsilon
+
+
 def _pectin_atomtype_name(chain_index: int, bead_index: int, epsilon: float) -> str:
     bead_type = classify_pectin_epsilon(epsilon)
     return f"{bead_type}e{_epsilon_step_code(epsilon)}c{chain_index}b{bead_index}"
 
 
 def _draw_pectin_epsilon(rng: random.Random) -> float:
-    epsilon = rng.choice(epsilon_step_values())
-    classify_pectin_epsilon(epsilon)
-    return epsilon
+    return validate_pectin_epsilon(rng.choice(epsilon_step_values()))
 
 
 def assign_all_chain_bead_epsilons(

@@ -80,7 +80,10 @@ class TestPectinVariant(unittest.TestCase):
             pectin_itp = (Path(tmpdir) / "sudowoodo_pectin.itp").read_text()
             template_itp = PECTIN_TEMPLATE.read_text()
             self.assertEqual(pectin_itp, template_itp)
-            report_lines = (Path(tmpdir) / "pectin_assignment_report.txt").read_text().splitlines()
+            report_lines = [
+                line for line in (Path(tmpdir) / "pectin_assignment_report.txt").read_text().splitlines()
+                if line.strip() and not line.lstrip().startswith(";")
+            ]
             epsilons = [float(line.split()[-1]) for line in report_lines]
             self.assertEqual(epsilons, sorted(epsilons))
 
