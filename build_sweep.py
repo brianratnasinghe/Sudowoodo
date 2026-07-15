@@ -4,9 +4,9 @@ AFM cell wall builder tool with custom epsilon mapping and ktheta modifications.
 - Copies template .gro and .itp files.
 - Generates sudowoodo_base.itp with a unique per-bead atomtype and randomly
   sampled epsilon for every pectin bead in the system.  Epsilon ranges:
-    repulsive (PR) : 0.01 – 2.00 kJ/mol
-    neutral   (P)  : 2.01 – 3.50 kJ/mol
-    crosslink (PC) : 3.51 – 5.00 kJ/mol
+    repulsive (PR) : 0.10 – 2.00 kJ/mol
+    neutral   (P)  : 2.01 – 4.00 kJ/mol
+    crosslink (PC) : 4.01 – 5.00 kJ/mol
   Each chain still has exactly 2 repulsive and 2 crosslink beads; all other
   beads are neutral.  Pairwise LJ interactions between unique pectin types and
   between pectin types and cellulose/xyloglucan are resolved by GROMACS
@@ -33,9 +33,9 @@ PECTIN_REPULSIVE_TYPE = "PR"
 PECTIN_CROSSLINK_TYPE = "PC"
 # Per-bead epsilon ranges (kJ/mol) for random assignment
 EPSILON_RANGE_BY_TYPE = {
-    PECTIN_REPULSIVE_TYPE: (0.01, 2.0),
-    PECTIN_NEUTRAL_TYPE:   (2.01, 3.5),
-    PECTIN_CROSSLINK_TYPE: (3.51, 5.0),
+    PECTIN_REPULSIVE_TYPE: (0.1, 2.0),
+    PECTIN_NEUTRAL_TYPE:   (2.01, 4.0),
+    PECTIN_CROSSLINK_TYPE: (4.01, 5.0),
 }
 # GRO files use fixed-width fields; these 0-based slice bounds parse the residue number at 0:5 and residue name at 5:10.
 GRO_RESIDUE_NUMBER_START = 0

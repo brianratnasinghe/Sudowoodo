@@ -11,7 +11,7 @@ CASE_GLOB = "pp_eps_*"
 TOPOLOGY_FILENAME = "afm_system.gro"
 TRAJECTORY_FILENAME = "production.xtc"
 ATOM_SELECTION = "all"
-CUTOFF_NM = 5.0
+CUTOFF_NM = 1.5
 LAST_FRACTION = 0.25
 OUTPUT_PNG = "nearest_neighbors_vs_epsilon.png"
 
