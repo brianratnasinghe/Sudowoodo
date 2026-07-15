@@ -44,7 +44,12 @@ def epsilon_step_values() -> List[float]:
 
 
 def epsilon_to_step_index(epsilon: float) -> int:
-    return int(round(epsilon / EPSILON_STEP))
+    if epsilon < EPSILON_STEP or epsilon > EPSILON_STEP_COUNT * EPSILON_STEP:
+        raise ValueError(f"Unsupported pectin epsilon step: {epsilon}")
+    scaled = epsilon / EPSILON_STEP
+    if abs(scaled - round(scaled)) > 1e-9:
+        raise ValueError(f"Pectin epsilon must use {EPSILON_STEP:.1f} increments: {epsilon}")
+    return int(round(scaled))
 
 
 def step_index_to_epsilon(step_index: int) -> float:
@@ -65,18 +70,13 @@ def _epsilon_step_code(epsilon: float) -> str:
     return f"{epsilon_to_step_index(epsilon):02d}"
 
 
-def validate_pectin_epsilon(epsilon: float) -> float:
-    classify_pectin_epsilon(epsilon)
-    return epsilon
-
-
 def _pectin_atomtype_name(chain_index: int, bead_index: int, epsilon: float) -> str:
     bead_type = classify_pectin_epsilon(epsilon)
     return f"{bead_type}e{_epsilon_step_code(epsilon)}c{chain_index}b{bead_index}"
 
 
 def _draw_pectin_epsilon(rng: random.Random) -> float:
-    return validate_pectin_epsilon(rng.choice(epsilon_step_values()))
+    return rng.choice(epsilon_step_values())
 
 
 def assign_all_chain_bead_epsilons(

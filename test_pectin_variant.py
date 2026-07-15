@@ -7,11 +7,12 @@ import build_sweep
 
 REPO_ROOT = Path(__file__).resolve().parent
 PECTIN_TEMPLATE = REPO_ROOT / "toppar_custom" / "sudowoodo_pectin.itp"
+TEST_BEAD_COUNT = 30
 
 
 class TestPectinVariant(unittest.TestCase):
     def test_assignments_use_tenth_steps(self):
-        assignments = build_sweep.assign_all_chain_bead_epsilons(1, 30, rng=random.Random(7))
+        assignments = build_sweep.assign_all_chain_bead_epsilons(1, TEST_BEAD_COUNT, rng=random.Random(7))
         for assignment in build_sweep.iter_assignments(assignments):
             epsilon = assignment["epsilon"]
             self.assertEqual(epsilon, round(epsilon, 1))
@@ -74,12 +75,16 @@ class TestPectinVariant(unittest.TestCase):
                 ["P", "P", "1", "1.000000", "1.000000"],
             ])
 
-    def test_build_variant_keeps_template_pectin_itp_and_writes_sorted_report(self):
+    def test_build_variant_preserves_template_pectin_itp(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            assignments = build_sweep.build_variant(Path(tmpdir), PECTIN_TEMPLATE, rng=random.Random(1))
+            build_sweep.build_variant(Path(tmpdir), PECTIN_TEMPLATE, rng=random.Random(1))
             pectin_itp = (Path(tmpdir) / "sudowoodo_pectin.itp").read_text()
             template_itp = PECTIN_TEMPLATE.read_text()
             self.assertEqual(pectin_itp, template_itp)
+
+    def test_build_variant_writes_sorted_report(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            build_sweep.build_variant(Path(tmpdir), PECTIN_TEMPLATE, rng=random.Random(1))
             report_lines = [
                 line for line in (Path(tmpdir) / "pectin_assignment_report.txt").read_text().splitlines()
                 if line.strip() and not line.lstrip().startswith(";")
