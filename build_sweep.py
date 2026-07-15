@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import random
+import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
@@ -164,7 +165,7 @@ def _count_pectin_beads(pectin_itp_path: Path) -> int:
     in_atoms = False
     for line in pectin_itp_path.read_text().splitlines():
         stripped = line.strip()
-        if stripped.startswith("[atoms]") or stripped.startswith("[ atoms ]"):
+        if re.match(r"^\[\s*atoms\s*\]$", stripped):
             in_atoms = True
             continue
         if in_atoms and stripped.startswith("["):

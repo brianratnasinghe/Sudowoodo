@@ -52,7 +52,8 @@ class TestPectinVariant(unittest.TestCase):
                     break
                 if in_atomtypes and stripped and not stripped.startswith(";"):
                     parts = stripped.split()
-                    entries.append((parts[0], float(parts[-1])))
+                    if len(parts) >= 2:
+                        entries.append((parts[0], float(parts[-1])))
             self.assertEqual(entries, [
                 ("C", 0.0),
                 ("X", 0.0),
@@ -71,7 +72,9 @@ class TestPectinVariant(unittest.TestCase):
                     continue
                 if stripped.startswith("["):
                     break
-                nonbond_entries.append(stripped.split())
+                parts = stripped.split()
+                if len(parts) == 5:
+                    nonbond_entries.append(parts)
             self.assertEqual(nonbond_entries, [
                 ["C", "C", "1", "2.673000", "1.000000"],
                 ["C", "X", "1", "2.087000", "1.000000"],
