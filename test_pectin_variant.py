@@ -23,7 +23,7 @@ class TestPectinVariant(unittest.TestCase):
         self.assertEqual(build_sweep._pectin_atomtype_name(1, 10, 2.1), "Pe21c1b10")
         self.assertEqual(build_sweep._pectin_atomtype_name(2, 19, 4.8), "PCe48c2b19")
 
-    def test_base_itp_sorts_pectin_atomtypes_and_writes_nonbond_params(self):
+    def test_base_itp_uses_standard_atomtypes_and_nonbond_format(self):
         assignments = {
             1: {
                 1: {"chain_index": 1, "bead_index": 1, "epsilon": 3.2, "bead_type": "P", "atomtype": "Pe32c1b1"},
@@ -45,31 +45,34 @@ class TestPectinVariant(unittest.TestCase):
                     break
                 if in_atomtypes and stripped and not stripped.startswith(";"):
                     parts = stripped.split()
-                    if parts[0] not in {"C", "X"}:
-                        entries.append((parts[0], float(parts[-1])))
-            self.assertEqual(entries, [("PRe04c1b2", 0.4), ("Pe32c1b1", 3.2), ("PCe47c1b3", 4.7)])
+                    entries.append((parts[0], float(parts[-1])))
+            self.assertEqual(entries, [
+                ("C", 0.0),
+                ("X", 0.0),
+                ("P", 0.0),
+                ("PN", 0.0),
+                ("PR", 0.0),
+                ("PC", 0.0),
+            ])
 
             lines = out_path.read_text().splitlines()
             start = lines.index("[ nonbond_params ]") + 2
             nonbond_entries = [line.split() for line in lines[start:] if line.strip()]
-            self.assertEqual(nonbond_entries[:3], [
-                ["C", "C", "1", "2.673000", "2.500000"],
-                ["C", "X", "1", "2.086500", "25.000000"],
-                ["X", "X", "1", "1.500000", "2.500000"],
+            self.assertEqual(nonbond_entries, [
+                ["C", "C", "1", "2.673000", "1.000000"],
+                ["C", "X", "1", "2.087000", "1.000000"],
+                ["C", "P", "1", "1.837000", "1.000000"],
+                ["X", "X", "1", "1.500000", "1.000000"],
+                ["X", "P", "1", "1.250000", "1.000000"],
+                ["P", "P", "1", "1.000000", "1.000000"],
             ])
-            self.assertEqual(nonbond_entries[3][0], "C")
-            self.assertTrue(nonbond_entries[3][1].startswith("PR"))
-            diagonal = [(parts[0], parts[1], float(parts[-1])) for parts in nonbond_entries if parts[0] == parts[1] and parts[0].startswith("P")]
-            self.assertEqual(diagonal, [("PRe04c1b2", "PRe04c1b2", 0.4), ("Pe32c1b1", "Pe32c1b1", 3.2), ("PCe47c1b3", "PCe47c1b3", 4.7)])
 
-    def test_build_variant_rewrites_pectin_atomtypes(self):
+    def test_build_variant_keeps_template_pectin_itp_and_writes_sorted_report(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             assignments = build_sweep.build_variant(Path(tmpdir), PECTIN_TEMPLATE, rng=random.Random(1))
             pectin_itp = (Path(tmpdir) / "sudowoodo_pectin.itp").read_text()
-            first_atomtype = assignments[1][1]["atomtype"]
-            last_atomtype = assignments[1][30]["atomtype"]
-            self.assertIn(first_atomtype, pectin_itp)
-            self.assertIn(last_atomtype, pectin_itp)
+            template_itp = PECTIN_TEMPLATE.read_text()
+            self.assertEqual(pectin_itp, template_itp)
             report_lines = (Path(tmpdir) / "pectin_assignment_report.txt").read_text().splitlines()
             epsilons = [float(line.split()[-1]) for line in report_lines]
             self.assertEqual(epsilons, sorted(epsilons))
