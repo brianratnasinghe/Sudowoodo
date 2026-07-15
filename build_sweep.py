@@ -71,7 +71,9 @@ def _pectin_atomtype_name(chain_index: int, bead_index: int, epsilon: float) -> 
 
 
 def _draw_pectin_epsilon(rng: random.Random) -> float:
-    return rng.choice(epsilon_step_values())
+    epsilon = rng.choice(epsilon_step_values())
+    classify_pectin_epsilon(epsilon)
+    return epsilon
 
 
 def assign_all_chain_bead_epsilons(
@@ -139,7 +141,7 @@ def write_per_bead_base_itp(output_path: Path, assignments: AssignmentMap) -> No
     output_path.write_text("\n".join(lines) + "\n")
 
 
-def write_per_bead_pectin_itp(template_path: Path, output_path: Path, assignments: AssignmentMap, chain_index: int = 1) -> None:
+def write_per_bead_pectin_itp(template_path: Path, output_path: Path) -> None:
     output_path.write_text(template_path.read_text())
 
 
@@ -177,7 +179,7 @@ def build_variant(
     bead_count = _count_pectin_beads(pectin_itp_template)
     assignments = assign_all_chain_bead_epsilons(chain_count, bead_count, rng=rng)
     write_per_bead_base_itp(output_dir / "sudowoodo_base.itp", assignments)
-    write_per_bead_pectin_itp(pectin_itp_template, output_dir / "sudowoodo_pectin.itp", assignments)
+    write_per_bead_pectin_itp(pectin_itp_template, output_dir / "sudowoodo_pectin.itp")
     write_assignment_report(output_dir / "pectin_assignment_report.txt", assignments)
     return assignments
 

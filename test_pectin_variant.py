@@ -56,8 +56,15 @@ class TestPectinVariant(unittest.TestCase):
             ])
 
             lines = out_path.read_text().splitlines()
-            start = lines.index("[ nonbond_params ]") + 2
-            nonbond_entries = [line.split() for line in lines[start:] if line.strip()]
+            start = lines.index("[ nonbond_params ]") + 1
+            nonbond_entries = []
+            for line in lines[start:]:
+                stripped = line.strip()
+                if not stripped or stripped.startswith(";"):
+                    continue
+                if stripped.startswith("["):
+                    break
+                nonbond_entries.append(stripped.split())
             self.assertEqual(nonbond_entries, [
                 ["C", "C", "1", "2.673000", "1.000000"],
                 ["C", "X", "1", "2.087000", "1.000000"],
