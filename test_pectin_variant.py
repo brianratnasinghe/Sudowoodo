@@ -23,7 +23,7 @@ class TestPectinVariant(unittest.TestCase):
         self.assertEqual(build_sweep._pectin_atomtype_name(1, 10, 2.1), "Pe21c1b10")
         self.assertEqual(build_sweep._pectin_atomtype_name(2, 19, 4.8), "PCe48c2b19")
 
-    def test_base_itp_orders_pectin_atomtypes_by_ascending_epsilon(self):
+    def test_base_itp_sorts_pectin_atomtypes_and_writes_nonbond_params(self):
         assignments = {
             1: {
                 1: {"chain_index": 1, "bead_index": 1, "epsilon": 3.2, "bead_type": "P", "atomtype": "Pe32c1b1"},
@@ -47,7 +47,7 @@ class TestPectinVariant(unittest.TestCase):
                     parts = stripped.split()
                     if parts[0] not in {"C", "X"}:
                         entries.append((parts[0], float(parts[-1])))
-            self.assertEqual(entries, [("PRe04c1b2", 0.0), ("Pe32c1b1", 0.0), ("PCe47c1b3", 0.0)])
+            self.assertEqual(entries, [("PRe04c1b2", 0.4), ("Pe32c1b1", 3.2), ("PCe47c1b3", 4.7)])
 
             lines = out_path.read_text().splitlines()
             start = lines.index("[ nonbond_params ]") + 2

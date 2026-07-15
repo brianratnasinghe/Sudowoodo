@@ -65,7 +65,7 @@ def _pectin_atomtype_name(chain_index: int, bead_index: int, epsilon: float) -> 
 
 
 def _draw_pectin_epsilon(rng: random.Random) -> float:
-    return step_index_to_epsilon(rng.randint(1, EPSILON_STEP_COUNT))
+    return rng.choice(epsilon_step_values())
 
 
 def assign_all_chain_bead_epsilons(
@@ -124,7 +124,7 @@ def write_per_bead_base_itp(output_path: Path, assignments: AssignmentMap) -> No
 
     for assignment in sorted_assignments_by_epsilon(assignments):
         lines.append(
-            f"{assignment['atomtype']:<12} 1 {26.6:>7.1f} 0.000 A {0.0:>9.6f} {0.0:>11.6f}"
+            f"{assignment['atomtype']:<12} 1 {26.6:>7.1f} 0.000 A {PECTIN_SIGMA:>9.6f} {assignment['epsilon']:>11.6f}"
         )
 
     lines.extend([
@@ -251,7 +251,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    rng = random.Random(args.seed)
+    rng = random.Random(args.seed) if args.seed is not None else random.Random()
     build_variant(args.out, args.pectin_itp_template, chain_count=args.chains, rng=rng)
 
 
