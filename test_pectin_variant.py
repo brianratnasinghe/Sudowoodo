@@ -19,6 +19,12 @@ class TestPectinVariant(unittest.TestCase):
             self.assertIn(build_sweep.classify_pectin_epsilon(epsilon), assignment["atomtype"])
             self.assertIn(f"e{build_sweep.epsilon_to_step_index(epsilon):02d}", assignment["atomtype"])
 
+    def test_assignments_support_multiple_chains(self):
+        assignments = build_sweep.assign_all_chain_bead_epsilons(2, 3, rng=random.Random(3))
+        self.assertEqual(sorted(assignments.keys()), [1, 2])
+        self.assertTrue(assignments[1][1]["atomtype"].endswith("c1b1"))
+        self.assertTrue(assignments[2][3]["atomtype"].endswith("c2b3"))
+
     def test_atomtype_names_include_type_and_step(self):
         self.assertEqual(build_sweep._pectin_atomtype_name(1, 3, 0.9), "PRe09c1b3")
         self.assertEqual(build_sweep._pectin_atomtype_name(1, 10, 2.1), "Pe21c1b10")
@@ -91,6 +97,11 @@ class TestPectinVariant(unittest.TestCase):
             ]
             epsilons = [float(line.split()[-1]) for line in report_lines]
             self.assertEqual(epsilons, sorted(epsilons))
+
+    def test_build_variant_raises_for_missing_template(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(FileNotFoundError):
+                build_sweep.build_variant(Path(tmpdir), Path(tmpdir) / "missing.itp", rng=random.Random(1))
 
 
 if __name__ == "__main__":

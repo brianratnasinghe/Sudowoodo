@@ -45,10 +45,12 @@ def epsilon_step_values() -> List[float]:
 
 def epsilon_to_step_index(epsilon: float) -> int:
     if epsilon < EPSILON_STEP or epsilon > EPSILON_STEP_COUNT * EPSILON_STEP:
-        raise ValueError(f"Unsupported pectin epsilon step: {epsilon}")
+        raise ValueError(
+            f"Epsilon must be between {EPSILON_STEP:.1f} and {EPSILON_STEP_COUNT * EPSILON_STEP:.1f}, got {epsilon}"
+        )
     scaled = epsilon / EPSILON_STEP
     if abs(scaled - round(scaled)) > 1e-9:
-        raise ValueError(f"Pectin epsilon must use {EPSILON_STEP:.1f} increments: {epsilon}")
+        raise ValueError(f"Pectin epsilon must be a multiple of {EPSILON_STEP:.1f}, got {epsilon}")
     return int(round(scaled))
 
 
