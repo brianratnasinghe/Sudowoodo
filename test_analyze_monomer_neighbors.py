@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import MagicMock, patch
 
 import analyze_monomer_neighbors as analysis
 
@@ -37,6 +38,23 @@ class AnalyzeMonomerNeighborsTests(unittest.TestCase):
         self.assertEqual(analysis.cutoff_angstrom(5.0), 50.0)
         with self.assertRaises(ValueError):
             analysis.cutoff_angstrom(0)
+
+    def test_plot_results_calls_errorbar_with_std_devs(self):
+        mock_plt = MagicMock()
+        mock_fig = MagicMock()
+        mock_plt.figure.return_value = mock_fig
+
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            with patch.object(analysis, "load_dependencies", return_value=(None, None, mock_plt, None)):
+                epsilons = [1.0, 2.0, 3.0]
+                averages = [4.0, 5.0, 6.0]
+                std_devs = [0.1, 0.2, 0.3]
+                analysis.plot_results(root, epsilons, averages, std_devs, 5.0)
+
+        mock_plt.errorbar.assert_called_once_with(
+            epsilons, averages, yerr=std_devs, marker="o", capsize=4
+        )
 
 
 if __name__ == "__main__":

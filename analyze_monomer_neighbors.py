@@ -56,7 +56,9 @@ def load_dependencies():
     return mda, np, plt, self_distance_array
 
 
-def analyze_case(case_dir: Path, cutoff_nm: float, last_fraction: float, atom_selection: str) -> float:
+def analyze_case(
+    case_dir: Path, cutoff_nm: float, last_fraction: float, atom_selection: str
+) -> tuple[float, float]:
     mda, np, _, self_distance_array = load_dependencies()
 
     topology_path = case_dir / TOPOLOGY_FILENAME
@@ -91,15 +93,22 @@ def analyze_case(case_dir: Path, cutoff_nm: float, last_fraction: float, atom_se
 
     if not frame_means:
         raise ValueError(f"No frames selected for analysis in {case_dir}")
-    return sum(frame_means) / len(frame_means)
+    arr = np.array(frame_means)
+    return float(arr.mean()), float(arr.std())
 
 
-def plot_results(root_dir: Path, epsilons: list[float], averages: list[float], cutoff_nm: float) -> Path:
+def plot_results(
+    root_dir: Path,
+    epsilons: list[float],
+    averages: list[float],
+    std_devs: list[float],
+    cutoff_nm: float,
+) -> Path:
     _, _, plt, _ = load_dependencies()
 
     output_path = root_dir / OUTPUT_PNG
     plt.figure(figsize=(8, 5))
-    plt.plot(epsilons, averages, marker="o")
+    plt.errorbar(epsilons, averages, yerr=std_devs, marker="o", capsize=4)
     plt.xlabel("Epsilon (kJ/mol)")
     plt.ylabel("Average nearest neighbors")
     plt.title(f"Nearest neighbors within {cutoff_nm} nm")
@@ -117,14 +126,19 @@ def main() -> int:
 
     epsilons = []
     averages = []
+    std_devs = []
     for case_dir in case_dirs:
         epsilon = extract_epsilon(case_dir)
-        average_neighbors = analyze_case(case_dir, CUTOFF_NM, LAST_FRACTION, ATOM_SELECTION)
+        average_neighbors, std_dev = analyze_case(case_dir, CUTOFF_NM, LAST_FRACTION, ATOM_SELECTION)
         epsilons.append(epsilon)
         averages.append(average_neighbors)
-        print(f"{case_dir.name}: epsilon={epsilon:.3f}, average nearest neighbors={average_neighbors:.6f}")
+        std_devs.append(std_dev)
+        print(
+            f"{case_dir.name}: epsilon={epsilon:.3f}, "
+            f"average nearest neighbors={average_neighbors:.6f} ± {std_dev:.6f}"
+        )
 
-    output_path = plot_results(ROOT_DIR, epsilons, averages, CUTOFF_NM)
+    output_path = plot_results(ROOT_DIR, epsilons, averages, std_devs, CUTOFF_NM)
     print(f"Saved plot to {output_path.resolve()}")
     return 0
 
