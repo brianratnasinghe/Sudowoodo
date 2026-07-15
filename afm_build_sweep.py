@@ -154,9 +154,9 @@ def generate_topology(args, out_dir):
     top_txt = textwrap.dedent(f"""\
         ;;;;;; AFM-Based Combined Topology
         #include "toppar_custom/sudowoodo_base.itp"
+        #include "toppar_custom/sudowoodo_cellulose.itp"
         #include "toppar_custom/sudowoodo_xyloglucan.itp"
         #include "toppar_custom/sudowoodo_pectin.itp"
-        #include "toppar_custom/sudowoodo_cellulose.itp"
 
         [ system ]
         AFM-Based Cell Wall System

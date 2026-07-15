@@ -71,8 +71,8 @@ def write_combined_top(output_path, chain_specs):
     with open(output_path, "w") as top:
         top.write(";;;;;; AFM-Based Combined Topology\n;\n")
         top.write("#include \"toppar_custom/sudowoodo_base.itp\"\n")
-        # Fixed include order: xyloglucan -> pectin -> cellulose (base already included above)
-        for itp_name in ["xyloglucan", "pectin", "cellulose"]:
+        # Include order matches molecule ordering: cellulose -> xyloglucan -> pectin
+        for itp_name in ["cellulose", "xyloglucan", "pectin"]:
             top.write("#include \"toppar_custom/sudowoodo_%s.itp\"\n" % itp_name)
         top.write("\n[ system ]\nAFM-Based Cell Wall System\n\n[molecules]\n")
         counts = {}
