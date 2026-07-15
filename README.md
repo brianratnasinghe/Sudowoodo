@@ -145,7 +145,7 @@ When `--multilayer` is set:
 ## Advanced
 
 - Edit `build_sweep.py` to add more control, config file support, or extend with new bead types.
-- `build_sweep.py` avoids `type | type` runtime aliases so it works on Python versions that do not support that syntax in evaluated type expressions.
+- `build_sweep.py` uses `Union[...]` type-hint syntax where needed for compatibility with Python versions prior to 3.10.
 - All code is pure Python 3 and requires only the standard library (plus numpy, scipy, tqdm for build_system.py).
 
 ## Citation
