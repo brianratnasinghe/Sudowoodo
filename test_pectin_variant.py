@@ -47,7 +47,20 @@ class TestPectinVariant(unittest.TestCase):
                     parts = stripped.split()
                     if parts[0] not in {"C", "X"}:
                         entries.append((parts[0], float(parts[-1])))
-            self.assertEqual(entries, [("PRe04c1b2", 0.4), ("Pe32c1b1", 3.2), ("PCe47c1b3", 4.7)])
+            self.assertEqual(entries, [("PRe04c1b2", 0.0), ("Pe32c1b1", 0.0), ("PCe47c1b3", 0.0)])
+
+            lines = out_path.read_text().splitlines()
+            start = lines.index("[ nonbond_params ]") + 2
+            nonbond_entries = [line.split() for line in lines[start:] if line.strip()]
+            self.assertEqual(nonbond_entries[:3], [
+                ["C", "C", "1", "2.673000", "2.500000"],
+                ["C", "X", "1", "2.086500", "25.000000"],
+                ["X", "X", "1", "1.500000", "2.500000"],
+            ])
+            self.assertEqual(nonbond_entries[3][0], "C")
+            self.assertTrue(nonbond_entries[3][1].startswith("PR"))
+            diagonal = [(parts[0], parts[1], float(parts[-1])) for parts in nonbond_entries if parts[0] == parts[1] and parts[0].startswith("P")]
+            self.assertEqual(diagonal, [("PRe04c1b2", "PRe04c1b2", 0.4), ("Pe32c1b1", "Pe32c1b1", 3.2), ("PCe47c1b3", "PCe47c1b3", 4.7)])
 
     def test_build_variant_rewrites_pectin_atomtypes(self):
         with tempfile.TemporaryDirectory() as tmpdir:

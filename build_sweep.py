@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import random
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
@@ -22,9 +23,9 @@ CORE_ATOMTYPES = (
 )
 
 CORE_NONBOND_PARAMS = (
-    ("C", "C", 1, 2.673, 1.0),
-    ("C", "X", 1, 2.087, 1.0),
-    ("X", "X", 1, 1.5, 1.0),
+    ("C", "C", 1, 2.673000, 2.500000),
+    ("C", "X", 1, 2.086500, 25.000000),
+    ("X", "X", 1, 1.500000, 2.500000),
 )
 
 
@@ -119,11 +120,11 @@ def _base_header() -> str:
 def write_per_bead_base_itp(output_path: Path, assignments: AssignmentMap) -> None:
     lines = [_base_header(), "[ atomtypes ]", "; name  at.num  mass  charge  ptype  sigma  epsilon"]
     for name, mass, sigma, epsilon in CORE_ATOMTYPES:
-        lines.append(f"{name:<12} 1 {mass:>7.1f} 0.000 A {sigma:>9.6f} {epsilon:>11.6f}")
+        lines.append(f"{name:<12} 1 {mass:>7.1f} 0.000 A {0.0:>9.6f} {0.0:>11.6f}")
 
     for assignment in sorted_assignments_by_epsilon(assignments):
         lines.append(
-            f"{assignment['atomtype']:<12} 1 {26.6:>7.1f} 0.000 A {PECTIN_SIGMA:>9.6f} {assignment['epsilon']:>11.6f}"
+            f"{assignment['atomtype']:<12} 1 {26.6:>7.1f} 0.000 A {0.0:>9.6f} {0.0:>11.6f}"
         )
 
     lines.extend([
@@ -131,10 +132,41 @@ def write_per_bead_base_itp(output_path: Path, assignments: AssignmentMap) -> No
         "[ nonbond_params ]",
         ";   i     j  func  sigma(nm)   epsilon(kJ/mol)",
     ])
-    for left, right, func, sigma, epsilon in CORE_NONBOND_PARAMS:
-        lines.append(f"{left:>5} {right:>5} {func:>3} {sigma:>10.3f} {epsilon:>16.6f}")
+    interaction_rows = _build_nonbond_param_rows(assignments)
+    for left, right, func, sigma, epsilon in interaction_rows:
+        lines.append(f"{left:>12} {right:>12} {func:>3} {sigma:>12.6f} {epsilon:>12.6f}")
 
     output_path.write_text("\n".join(lines) + "\n")
+
+
+def _atomtype_parameters(assignments: AssignmentMap) -> Dict[str, Tuple[float, float]]:
+    parameters = {name: (sigma, epsilon) for name, _mass, sigma, epsilon in CORE_ATOMTYPES}
+    for assignment in iter_assignments(assignments):
+        parameters[str(assignment["atomtype"])] = (PECTIN_SIGMA, float(assignment["epsilon"]))
+    return parameters
+
+
+def _build_nonbond_param_rows(assignments: AssignmentMap) -> List[Tuple[str, str, int, float, float]]:
+    parameters = _atomtype_parameters(assignments)
+    pectin_atomtypes = [str(assignment["atomtype"]) for assignment in sorted_assignments_by_epsilon(assignments)]
+    rows: List[Tuple[str, str, int, float, float]] = list(CORE_NONBOND_PARAMS)
+
+    for left in ("C", "X"):
+        for right in pectin_atomtypes:
+            left_sigma, left_epsilon = parameters[left]
+            right_sigma, right_epsilon = parameters[right]
+            sigma = (left_sigma + right_sigma) / 2.0
+            epsilon = math.sqrt(left_epsilon * right_epsilon)
+            rows.append((left, right, 1, round(sigma, 6), round(epsilon, 6)))
+
+    for index, left in enumerate(pectin_atomtypes):
+        for right in pectin_atomtypes[index:]:
+            left_sigma, left_epsilon = parameters[left]
+            right_sigma, right_epsilon = parameters[right]
+            sigma = (left_sigma + right_sigma) / 2.0
+            epsilon = math.sqrt(left_epsilon * right_epsilon)
+            rows.append((left, right, 1, round(sigma, 6), round(epsilon, 6)))
+    return rows
 
 
 def _replace_pectin_atomtypes(template_text: str, chain_assignments: Dict[int, Assignment]) -> str:
