@@ -48,6 +48,15 @@ This creates one case directory per epsilon value, each with:
 - a `production.mdp` configured for a `100 ns` production run
 - a case-specific `P-P` epsilon in `toppar_custom/sudowoodo_base.itp`
 
+After the runs finish, you can analyze the average nearest-neighbor count for each case with:
+
+```bash
+cd pectin_monomer_sweep
+python ../analyze_monomer_neighbors.py
+```
+
+The script scans `pp_eps_*` folders, analyzes the last `25%` of frames from `production.xtc`, averages the number of neighbors within the cutoff for each bead, and saves `nearest_neighbors_vs_epsilon.png`. Adjust the analysis constants at the top of the script to change the cutoff, frame fraction, or file names.
+
 4. **Run your simulation:**  
    ```bash
    cd <your_output_folder>
