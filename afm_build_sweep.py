@@ -335,7 +335,7 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
 
 def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False):
     """
-    Call build_afm_system.py with the given seed inside the output folder.
+    Call build_system.py with the given seed inside the output folder.
     """
     print(f"[info] Building afm_system.gro using build_system.py ...")
     builder = Path(__file__).parent / "build_system.py"
