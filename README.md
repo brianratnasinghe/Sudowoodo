@@ -16,7 +16,7 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
 
 2. **Run the builder script:**  
    ```bash
-   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
+   python build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
    ```
 
    - `--out` specifies the output folder.
@@ -36,7 +36,6 @@ python build_sweep.py --out run_$(date +%s)
 Optional flags:
 - `--chains` to set the number of pectin chains to assign (default `1`)
 - `--seed` for reproducible assignments
-- `--pectin-itp-template` to override the pectin template path (default `toppar_custom/sudowoodo_pectin.itp`)
 
 This writes:
 - `sudowoodo_base.itp` (per-bead pectin atomtypes and nonbonded parameters)
@@ -94,7 +93,7 @@ The builder supports adding a `deform` line to `production.mdp` with the `--defo
 Example for uniaxial deformation along the z axis:
 
 ```bash
-python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --deform "0 0 0.0001 0 0 0"
+python build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --deform "0 0 0.0001 0 0 0"
 ```
 
 The deform tensor follows GROMACS ordering:
@@ -123,8 +122,8 @@ This means:
 The builder supports creating a 4-layer fiber system using the `--multilayer` flag:
 
 ```bash
-# For afm_build_sweep.py
-python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --multilayer
+# For build_sweep.py
+python build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --multilayer
 
 # Or directly with build_system.py
 python build_system.py --seed 12345 --multilayer
