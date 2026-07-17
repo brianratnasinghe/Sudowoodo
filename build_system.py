@@ -71,23 +71,19 @@ def write_combined_top(output_path, chain_specs):
     with open(output_path, "w") as top:
         top.write(";;;;;; AFM-Based Combined Topology\n;\n")
         top.write("#include \"toppar_custom/sudowoodo_base.itp\"\n")
-        # Fixed include order: xyloglucan -> per-fiber pectin -> cellulose (base already included above)
+        # Include each polymer topology once; molecule counts are handled in [molecules].
         for itp_name in ["xyloglucan", "cellulose"]:
             top.write("#include \"toppar_custom/sudowoodo_%s.itp\"\n" % itp_name)
-        pectin_count = sum(1 for entry in chain_specs if entry[0] == "Pctn")
-        for pectin_idx in range(1, pectin_count + 1):
-            top.write("#include \"toppar_custom/sudowoodo_pectin_%d.itp\"\n" % pectin_idx)
+        top.write("#include \"toppar_custom/sudowoodo_pectin.itp\"\n")
         top.write("\n[ system ]\nAFM-Based Cell Wall System\n\n[molecules]\n")
         counts = {}
         for entry in chain_specs:
             t = entry[0]
             counts[t] = counts.get(t, 0) + 1
-        # Order must match the coordinate file: Cell first, then Xylo, then per-fiber Pctn molecules
-        for t in ["Cell", "Xylo"]:
+        # Order must match the coordinate file: Cell first, then Xylo, then Pctn.
+        for t in ["Cell", "Xylo", "Pctn"]:
             if t in counts:
                 top.write("%-10s %d\n" % (t, counts[t]))
-        for pectin_idx in range(1, pectin_count + 1):
-            top.write("Pctn_%d %d\n" % (pectin_idx, 1))
 
 class SpatialIndex(object):
     def __init__(self):
