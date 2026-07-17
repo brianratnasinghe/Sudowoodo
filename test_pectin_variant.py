@@ -49,11 +49,11 @@ class TestPectinVariant(unittest.TestCase):
 
     def test_atomtype_names_include_type_and_step(self):
         # chain_index and bead_index are no longer encoded; catalog names are shared
-        self.assertEqual(build_sweep._pectin_atomtype_name(1, 3, "PR", 0.9), "PR.9")
-        self.assertEqual(build_sweep._pectin_atomtype_name(1, 10, "PN", 2.1), "PN.1")
-        self.assertEqual(build_sweep._pectin_atomtype_name(2, 19, "PC", 4.8), "PC4.8")
-        self.assertEqual(build_sweep._pectin_atomtype_name(1, 5, "PC", 4.0), "PC4.0")
-        self.assertEqual(build_sweep._pectin_atomtype_name(1, 1, "PN", 3.5), "PN1.5")
+        self.assertEqual(build_sweep._pectin_atomtype_name(1, 3, "PR", 0.9), "PctRep09")
+        self.assertEqual(build_sweep._pectin_atomtype_name(1, 10, "PN", 2.1), "PctNeu01")
+        self.assertEqual(build_sweep._pectin_atomtype_name(2, 19, "PC", 4.8), "PctXlk09")
+        self.assertEqual(build_sweep._pectin_atomtype_name(1, 5, "PC", 4.0), "PctXlk01")
+        self.assertEqual(build_sweep._pectin_atomtype_name(1, 1, "PN", 3.5), "PctNeu15")
 
     # ------------------------------------------------------------------ #
     # Assignment generation
@@ -94,7 +94,7 @@ class TestPectinVariant(unittest.TestCase):
             for bead_idx in (1, 30):
                 atype = str(assignments[chain_idx][bead_idx]["atomtype"])
                 self.assertTrue(
-                    atype.startswith("PR") or atype.startswith("PN") or atype.startswith("PC"),
+                    atype.startswith("PctRep") or atype.startswith("PctNeu") or atype.startswith("PctXlk"),
                     msg=f"Unexpected atomtype prefix: {atype}",
                 )
 
@@ -274,9 +274,9 @@ class TestPectinVariant(unittest.TestCase):
         """51 catalog types total: 20 PR + 20 PN + 11 PC, in that order."""
         names = build_sweep.catalog_type_names()
         self.assertEqual(len(names), 51)
-        pr_names = [n for n in names if n.startswith("PR")]
-        pn_names = [n for n in names if n.startswith("PN")]
-        pc_names = [n for n in names if n.startswith("PC")]
+        pr_names = [n for n in names if n.startswith("PctRep")]
+        pn_names = [n for n in names if n.startswith("PctNeu")]
+        pc_names = [n for n in names if n.startswith("PctXlk")]
         self.assertEqual(len(pr_names), 20)
         self.assertEqual(len(pn_names), 20)
         self.assertEqual(len(pc_names), 11)
@@ -285,12 +285,12 @@ class TestPectinVariant(unittest.TestCase):
         self.assertEqual(names[20:40], pn_names)
         self.assertEqual(names[40:], pc_names)
         # Spot-check specific names
-        self.assertIn("PR.1", names)
-        self.assertIn("PR2.0", names)
-        self.assertIn("PN.1", names)
-        self.assertIn("PN2.0", names)
-        self.assertIn("PC4.0", names)
-        self.assertIn("PC5.0", names)
+        self.assertIn("PctRep01", names)
+        self.assertIn("PctRep20", names)
+        self.assertIn("PctNeu01", names)
+        self.assertIn("PctNeu20", names)
+        self.assertIn("PctXlk01", names)
+        self.assertIn("PctXlk11", names)
 
     def test_catalog_cross_eps_pn_uses_max(self):
         """PN×PN cross-term = max of the two stored offsets (epsilon − 2.0)."""
@@ -312,22 +312,22 @@ class TestPectinVariant(unittest.TestCase):
             build_sweep._catalog_cross_eps("PC", 4.1, "PC", 4.1), 4.1)
 
     def test_base_itp_contains_pn_cross_terms(self):
-        """PN.1–PN.1 and PN.1–PN.2 cross-terms should appear in nonbond_params."""
+        # PctNeu01–PctNeu01 and PctNeu01–PctNeu02 cross-terms should appear in nonbond_params.
         assignments = build_sweep.assign_all_chain_bead_epsilons(1, rng=random.Random(1))
         with tempfile.TemporaryDirectory() as tmpdir:
             out_path = Path(tmpdir) / "sudowoodo_base.itp"
             build_sweep.write_per_bead_base_itp(out_path, assignments)
             text = out_path.read_text()
-        # PN.1–PN.1 self-interaction: stored ε = 0.1 (offset from 2.0)
-        self.assertIn("PN.1", text)
-        # Check the nonbond_params block contains PN.1 PN.1 with epsilon 0.1
+        # PctNeu01 self-interaction: stored ε = 0.1 (offset from 2.0)
+        self.assertIn("PctNeu01", text)
+        # Check the nonbond_params block contains PctNeu01 PctNeu01 with epsilon 0.1
         nb_start = text.index("[ nonbond_params ]")
         nb_text = text[nb_start:]
-        self.assertRegex(nb_text, r"PN\.1\s+PN\.1\s+1\s+1\.000000\s+0\.100000")
-        self.assertRegex(nb_text, r"PN\.1\s+PN\.2\s+1\s+1\.000000\s+0\.200000")
+        self.assertRegex(nb_text, r"PctNeu01\s+PctNeu01\s+1\s+1\.000000\s+0\.100000")
+        self.assertRegex(nb_text, r"PctNeu01\s+PctNeu02\s+1\s+1\.000000\s+0\.200000")
 
     def test_base_itp_contains_pc_cross_terms(self):
-        """PC4.0–PC4.0 and PC4.0–PC4.1 cross-terms should appear in nonbond_params."""
+        # PctXlk01–PctXlk01 and PctXlk01–PctXlk02 cross-terms should appear in nonbond_params.
         assignments = build_sweep.assign_all_chain_bead_epsilons(1, rng=random.Random(1))
         with tempfile.TemporaryDirectory() as tmpdir:
             out_path = Path(tmpdir) / "sudowoodo_base.itp"
@@ -335,8 +335,8 @@ class TestPectinVariant(unittest.TestCase):
             text = out_path.read_text()
         nb_start = text.index("[ nonbond_params ]")
         nb_text = text[nb_start:]
-        self.assertRegex(nb_text, r"PC4\.0\s+PC4\.0\s+1\s+1\.000000\s+4\.000000")
-        self.assertRegex(nb_text, r"PC4\.0\s+PC4\.1\s+1\s+1\.000000\s+4\.050000")
+        self.assertRegex(nb_text, r"PctXlk01\s+PctXlk01\s+1\s+1\.000000\s+4\.000000")
+        self.assertRegex(nb_text, r"PctXlk01\s+PctXlk02\s+1\s+1\.000000\s+4\.050000")
 
 
 if __name__ == "__main__":

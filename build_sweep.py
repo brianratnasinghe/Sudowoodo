@@ -114,31 +114,24 @@ def _epsilon_step_code(epsilon: float) -> str:
 # Catalog type naming
 # ---------------------------------------------------------------------------
 
-def _format_ep_suffix(val: float) -> str:
-    """Format a float offset as a type-name suffix.
-
-    Values < 1 are written as ``.N`` (e.g. 0.1 → ``.1``, 0.9 → ``.9``).
-    Values ≥ 1 are written as ``N.M`` (e.g. 1.0 → ``1.0``, 2.0 → ``2.0``).
-    """
-    val = round(val, 1)
-    if val < 1.0:
-        return f".{round(val * 10)}"
-    return f"{val:.1f}"
-
-
 def _catalog_type_name(bead_type: str, epsilon: float) -> str:
     """Return the shared catalog atomtype name for a bead class + epsilon.
 
-    * PR types: suffix is the absolute epsilon (PR.1 … PR2.0)
-    * PN types: suffix is epsilon − 2.0   (PN.1 … PN2.0)
-    * PC types: full absolute epsilon with ``PC`` prefix (PC4.0 … PC5.0)
+    Each bead type has a descriptive prefix and a zero-padded 1-based step
+    index counted from the low end of the type's epsilon range:
+
+    * ``PctRep`` (Pectin Repulsive)  steps 01–20 for ε 0.1–2.0
+    * ``PctNeu`` (Pectin Neutral)    steps 01–20 for ε 2.1–4.0
+    * ``PctXlk`` (Pectin Crosslink)  steps 01–11 for ε 4.0–5.0
     """
+    lo = EPSILON_RANGE_BY_TYPE[bead_type][0]
+    step = round((epsilon - lo) / EPSILON_STEP) + 1
     if bead_type == "PR":
-        return "PR" + _format_ep_suffix(epsilon)
+        return f"PctRep{step:02d}"
     if bead_type == "PN":
-        return "PN" + _format_ep_suffix(round(epsilon - 2.0, 1))
+        return f"PctNeu{step:02d}"
     if bead_type == "PC":
-        return f"PC{epsilon:.1f}"
+        return f"PctXlk{step:02d}"
     raise ValueError(f"Unknown bead type: {bead_type!r}")
 
 
@@ -398,6 +391,50 @@ def write_per_fiber_pectin_itps(toppar_dir: Path, assignments: AssignmentMap) ->
             chain_index,
             chain_assignments,
         )
+
+
+def write_default_pectin_itp(output_path: Path, seed: int = 0) -> None:
+    """Write a static ``sudowoodo_pectin.itp`` template using catalog atomtypes.
+
+    The molecule is named ``Pctn`` and uses the standard composition of
+    ``PC_PER_FIBER`` PctXlk + ``PR_PER_FIBER`` PctRep + ``PN_PER_FIBER`` PctNeu
+    beads drawn with the given *seed* for reproducibility.  All atomtype names
+    reference shared catalog entries defined in ``sudowoodo_base.itp``.
+    """
+    assignments = assign_all_chain_bead_epsilons(1, rng=random.Random(seed))
+    chain_assignments = assignments[1]
+    n = len(chain_assignments)
+    lines = [
+        f"#define k_bond {K_BOND}",
+        f"#define k_theta {K_THETA}",
+        "",
+        "[ moleculetype ]",
+        "; molname      nrexcl",
+        "  Pctn         1",
+        "",
+        "[ atoms ]",
+        "; id    type                      resnr  residu  atom   cgnr  charge",
+    ]
+    for bead_index in range(1, n + 1):
+        atype = str(chain_assignments[bead_index]["atomtype"])
+        lines.append(
+            f"  {bead_index:<5} {atype:<24} 1      Pctn    P{bead_index:<5} {bead_index:<5} 0"
+        )
+    lines += [
+        "",
+        "[ bonds ]",
+        ";  i    j      funct   length  force.c.",
+    ]
+    for i in range(1, n):
+        lines.append(f"  {i}    {i + 1}    1       {BOND_LENGTH}    k_bond")
+    lines += [
+        "",
+        "[ angles ]",
+        ";  i    j    k      funct   angle   force.c.",
+    ]
+    for i in range(1, n - 1):
+        lines.append(f"  {i}    {i + 1}    {i + 2}    2       180.0   k_theta")
+    output_path.write_text("\n".join(lines) + "\n")
 
 
 def write_assignment_report(output_path: Path, assignments: AssignmentMap) -> None:
