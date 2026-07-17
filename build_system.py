@@ -96,7 +96,7 @@ def write_combined_top(output_path, chain_specs):
             top.write("%-10s %d\n" % (t, counts[t]))
         # One entry per fiber so GROMACS can map atoms to the right topology
         for pectin_idx in range(1, pectin_count + 1):
-            top.write("Pctn_%-6d 1\n" % pectin_idx)
+            top.write("Pctn_%d 1\n" % pectin_idx)
 
 class SpatialIndex(object):
     def __init__(self):

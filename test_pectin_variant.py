@@ -1,3 +1,4 @@
+import re
 import random
 import tempfile
 import unittest
@@ -187,9 +188,8 @@ class TestPectinVariant(unittest.TestCase):
                 itp = (tmppath / f"sudowoodo_pectin_{chain_index}.itp").read_text()
                 self.assertIn(f"Pctn_{chain_index}", itp)
                 # The moleculetype name must be Pctn_N, not the bare "Pctn"
-                import re as _re
                 mol_lines = [l for l in itp.splitlines()
-                             if _re.match(r'^\s+Pctn\s+\d', l)]
+                             if re.match(r'^\s+Pctn\s+\d', l)]
                 self.assertEqual(mol_lines, [],
                     f"Chain {chain_index} has a bare 'Pctn' moleculetype entry")
 
