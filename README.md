@@ -16,7 +16,7 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
 
 2. **Run the builder script:**  
    ```bash
-   python build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
+   python build_sweep.py --out run_$(date +%s) --epsilon CC=2.5,CX=2.5,CP=2.5,XX=2.5,XP=2.5,PP=2.5
    ```
 
    - `--out` specifies the output folder.
