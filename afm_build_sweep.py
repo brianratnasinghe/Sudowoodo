@@ -5,7 +5,7 @@ AFM cell wall builder tool with custom epsilon mapping and ktheta modifications.
 - Modifies sudowoodo_base.itp with user-specified epsilon for bead pairs.
 - Modifies polymer .itp files with user-specified ktheta values.
 - Generates topology, .mdp files, run.sh, and afm_build.log.
-- Calls build_afm_system.py to create afm_system.gro in the output folder.
+- Calls build_system.py to create afm_system.gro in the output folder.
 
 Usage:
   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
@@ -337,10 +337,10 @@ def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False):
     """
     Call build_afm_system.py with the given seed inside the output folder.
     """
-    print(f"[info] Building afm_system.gro using build_afm_system.py ...")
-    builder = Path(__file__).parent / "build_afm_system.py"
+    print(f"[info] Building afm_system.gro using build_system.py ...")
+    builder = Path(__file__).parent / "build_system.py"
     if not builder.exists():
-        raise FileNotFoundError(f"Could not find build_afm_system.py in {builder.parent}")
+        raise FileNotFoundError(f"Could not find build_system.py in {builder.parent}")
 
     cmd = ["python", str(builder), "--seed", str(seed)]
     if ktheta_str:
