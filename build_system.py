@@ -80,10 +80,14 @@ def write_combined_top(output_path, chain_specs):
         for entry in chain_specs:
             t = entry[0]
             counts[t] = counts.get(t, 0) + 1
-        # Order must match the coordinate file: Cell first, then Xylo, then Pctn.
-        for t in ["Cell", "Xylo", "Pctn"]:
-            if t in counts:
-                top.write("%-10s %d\n" % (t, counts[t]))
+        # Preserve first-seen chain type order from the coordinate generation.
+        molecule_order = []
+        for entry in chain_specs:
+            t = entry[0]
+            if t not in molecule_order:
+                molecule_order.append(t)
+        for t in molecule_order:
+            top.write("%-10s %d\n" % (t, counts[t]))
 
 class SpatialIndex(object):
     def __init__(self):
