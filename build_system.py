@@ -1,10 +1,18 @@
 from __future__ import print_function
 import math
+import os
+import random
+import sys
 import time
 import argparse
 import numpy as np
+from pathlib import Path as _Path
 from scipy.spatial import cKDTree
 from tqdm import tqdm
+
+# build_sweep lives alongside this file
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import build_sweep
 
 # ----------------------------
 # Config (halved box & counts)
@@ -68,26 +76,27 @@ def write_combined_gro(output_path, systems, box):
         f.write("%10.5f%10.5f%10.5f\n" % (box[0], box[1], box[2]))
 
 def write_combined_top(output_path, chain_specs):
+    pectin_count = sum(1 for e in chain_specs if e[0] == "Pctn")
     with open(output_path, "w") as top:
         top.write(";;;;;; AFM-Based Combined Topology\n;\n")
         top.write("#include \"toppar_custom/sudowoodo_base.itp\"\n")
-        # Fixed include order: xyloglucan -> per-fiber pectin -> cellulose (base already included above)
         for itp_name in ["xyloglucan", "cellulose"]:
             top.write("#include \"toppar_custom/sudowoodo_%s.itp\"\n" % itp_name)
-        pectin_count = sum(1 for entry in chain_specs if entry[0] == "Pctn")
+        # One ITP per pectin fiber — each defines a unique Pctn_N moleculetype
         for pectin_idx in range(1, pectin_count + 1):
             top.write("#include \"toppar_custom/sudowoodo_pectin_%d.itp\"\n" % pectin_idx)
         top.write("\n[ system ]\nAFM-Based Cell Wall System\n\n[molecules]\n")
+        # Non-Pctn types in first-seen order with aggregated counts
+        mol_order = list(dict.fromkeys(e[0] for e in chain_specs if e[0] != "Pctn"))
         counts = {}
         for entry in chain_specs:
-            t = entry[0]
-            counts[t] = counts.get(t, 0) + 1
-        # Order must match the coordinate file: Cell first, then Xylo, then per-fiber Pctn molecules
-        for t in ["Cell", "Xylo"]:
-            if t in counts:
-                top.write("%-10s %d\n" % (t, counts[t]))
+            if entry[0] != "Pctn":
+                counts[entry[0]] = counts.get(entry[0], 0) + 1
+        for t in mol_order:
+            top.write("%-10s %d\n" % (t, counts[t]))
+        # One entry per fiber so GROMACS can map atoms to the right topology
         for pectin_idx in range(1, pectin_count + 1):
-            top.write("Pctn_%d %d\n" % (pectin_idx, 1))
+            top.write("Pctn_%d 1\n" % pectin_idx)
 
 class SpatialIndex(object):
     def __init__(self):
@@ -265,6 +274,21 @@ def build(seed, multilayer=False):
     # --- Write outputs ---
     print("[STEP] Writing outputs: afm_system.gro / afm_system.top")
     write_combined_gro("afm_system.gro", systems, target_box)
+
+    # Generate per-fiber pectin ITP files and register atomtypes in base ITP
+    toppar_dir = _Path("toppar_custom")
+    toppar_dir.mkdir(exist_ok=True)
+    pectin_count = sum(1 for e in chain_specs if e[0] == "Pctn")
+    rng_sweep = random.Random(seed)
+    pect_assignments = build_sweep.assign_all_chain_bead_epsilons(pectin_count, rng=rng_sweep)
+    base_itp = toppar_dir / "sudowoodo_base.itp"
+    if base_itp.exists():
+        build_sweep.append_per_bead_atomtypes(base_itp, pect_assignments)
+    else:
+        build_sweep.write_per_bead_base_itp(base_itp, pect_assignments)
+    build_sweep.write_per_fiber_pectin_itps(toppar_dir, pect_assignments)
+    print("[INFO] Generated %d per-fiber pectin ITP files" % pectin_count)
+
     write_combined_top("afm_system.top", chain_specs)
 
     # --- Summary ---
