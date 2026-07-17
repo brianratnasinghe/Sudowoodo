@@ -6,7 +6,6 @@ from pathlib import Path
 import build_sweep
 
 REPO_ROOT = Path(__file__).resolve().parent
-PECTIN_TEMPLATE = REPO_ROOT / "toppar_custom" / "sudowoodo_pectin.itp"
 TEST_BEAD_COUNT = 30
 
 
@@ -86,25 +85,20 @@ class TestPectinVariant(unittest.TestCase):
 
     def test_build_variant_preserves_template_pectin_itp(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            build_sweep.build_variant(Path(tmpdir), PECTIN_TEMPLATE, rng=random.Random(1))
+            build_sweep.build_variant(Path(tmpdir), rng=random.Random(1))
             pectin_itp = (Path(tmpdir) / "sudowoodo_pectin.itp").read_text()
-            template_itp = PECTIN_TEMPLATE.read_text()
+            template_itp = build_sweep.PECTIN_ITP_TEMPLATE.read_text()
             self.assertEqual(pectin_itp, template_itp)
 
     def test_build_variant_writes_sorted_report(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            build_sweep.build_variant(Path(tmpdir), PECTIN_TEMPLATE, rng=random.Random(1))
+            build_sweep.build_variant(Path(tmpdir), rng=random.Random(1))
             report_lines = [
                 line for line in (Path(tmpdir) / "pectin_assignment_report.txt").read_text().splitlines()
                 if line.strip() and not line.lstrip().startswith(";")
             ]
             epsilons = [float(line.split()[-1]) for line in report_lines]
             self.assertEqual(epsilons, sorted(epsilons))
-
-    def test_build_variant_raises_for_missing_template(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with self.assertRaises(FileNotFoundError):
-                build_sweep.build_variant(Path(tmpdir), Path(tmpdir) / "missing.itp", rng=random.Random(1))
 
 
 if __name__ == "__main__":

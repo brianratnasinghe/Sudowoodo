@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple, Union
 
+PECTIN_ITP_TEMPLATE = Path(__file__).resolve().parent / "toppar_custom" / "sudowoodo_pectin.itp"
+
 EPSILON_STEP = 0.1
 EPSILON_STEP_COUNT = 50
 PECTIN_SIGMA = 1.0
@@ -177,15 +179,14 @@ def _count_pectin_beads(pectin_itp_path: Path) -> int:
 
 def build_variant(
     output_dir: Path,
-    pectin_itp_template: Path,
     chain_count: int = 1,
     rng: random.Random | None = None,
 ) -> AssignmentMap:
     output_dir.mkdir(parents=True, exist_ok=True)
-    bead_count = _count_pectin_beads(pectin_itp_template)
+    bead_count = _count_pectin_beads(PECTIN_ITP_TEMPLATE)
     assignments = assign_all_chain_bead_epsilons(chain_count, bead_count, rng=rng)
     write_per_bead_base_itp(output_dir / "sudowoodo_base.itp", assignments)
-    write_per_bead_pectin_itp(pectin_itp_template, output_dir / "sudowoodo_pectin.itp")
+    write_per_bead_pectin_itp(PECTIN_ITP_TEMPLATE, output_dir / "sudowoodo_pectin.itp")
     write_assignment_report(output_dir / "pectin_assignment_report.txt", assignments)
     return assignments
 
@@ -193,12 +194,6 @@ def build_variant(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate per-bead pectin epsilon sweeps in 0.1 increments.")
     parser.add_argument("--out", type=Path, required=True, help="Output directory")
-    parser.add_argument(
-        "--pectin-itp-template",
-        type=Path,
-        default=Path("toppar_custom/sudowoodo_pectin.itp"),
-        help="Template pectin ITP path",
-    )
     parser.add_argument("--chains", type=int, default=1, help="Number of pectin chains to assign")
     parser.add_argument("--seed", type=int, default=None, help="Random seed")
     return parser.parse_args()
@@ -207,7 +202,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     rng = random.Random(args.seed) if args.seed is not None else random.Random()
-    build_variant(args.out, args.pectin_itp_template, chain_count=args.chains, rng=rng)
+    build_variant(args.out, chain_count=args.chains, rng=rng)
 
 
 if __name__ == "__main__":
