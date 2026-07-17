@@ -72,20 +72,15 @@ def write_combined_top(output_path, chain_specs):
         top.write(";;;;;; AFM-Based Combined Topology\n;\n")
         top.write("#include \"toppar_custom/sudowoodo_base.itp\"\n")
         # Include each polymer topology once; molecule counts are handled in [molecules].
-        for itp_name in ["xyloglucan", "cellulose"]:
+        for itp_name in ["xyloglucan", "cellulose", "pectin"]:
             top.write("#include \"toppar_custom/sudowoodo_%s.itp\"\n" % itp_name)
-        top.write("#include \"toppar_custom/sudowoodo_pectin.itp\"\n")
         top.write("\n[ system ]\nAFM-Based Cell Wall System\n\n[molecules]\n")
         counts = {}
         for entry in chain_specs:
             t = entry[0]
             counts[t] = counts.get(t, 0) + 1
         # Preserve first-seen chain type order from the coordinate generation.
-        molecule_order = []
-        for entry in chain_specs:
-            t = entry[0]
-            if t not in molecule_order:
-                molecule_order.append(t)
+        molecule_order = list(dict.fromkeys(entry[0] for entry in chain_specs))
         for t in molecule_order:
             top.write("%-10s %d\n" % (t, counts[t]))
 
