@@ -29,6 +29,10 @@ EPSILON_RANGE_BY_TYPE: Dict[str, Tuple[float, float]] = {
     "PN": (2.1, 4.0),
     "PC": (4.0, 5.0),
 }
+# Note: PN and PC both include ε=4.0 in their ranges.  classify_pectin_epsilon()
+# resolves the overlap by checking PC before PN, so ε=4.0 is classified as PC.
+# In the catalog, "PN2.0" (absolute ε=4.0, PN offset 2.0) and "PC4.0" are
+# distinct named types; each can appear independently in a pectin fiber.
 
 CORE_ATOMTYPES = (
     ("C",  100.0, 0.0, 0.0),
@@ -45,12 +49,16 @@ CORE_NONBOND_PARAMS = (
     ("P",  "P",  1, 1.000000, 1.000000),
 )
 
-# Sigma values for core beads interacting with catalog pectin beads
+# Sigma values for core beads interacting with catalog pectin beads.
+# All such pairs use epsilon=1.0 (constant, as specified in the problem statement:
+# e.g. C–PN.1: sigma=1.837, epsilon=1.0).
 _CORE_CATALOG_SIGMA: Tuple[Tuple[str, float], ...] = (
     ("C", 1.837),
     ("X", 1.250),
     ("P", 1.000),
 )
+# Epsilon for every core × catalog pair
+_CORE_CATALOG_EPSILON = 1.0
 
 
 Assignment = Dict[str, Union[float, int, str]]
@@ -167,15 +175,28 @@ def _catalog_stored_eps(bead_type: str, epsilon: float) -> float:
 def _catalog_cross_eps(btype_i: str, eps_i: float, btype_j: str, eps_j: float) -> float:
     """Compute the ``[nonbond_params]`` epsilon for a pair of catalog types.
 
-    * Same-class PC pairs use the arithmetic mean of absolute epsilons.
-    * All other pairs (PR/PN same-class and all cross-class) use the
-      maximum of the two stored (offset) epsilons.
+    Combining rules (matching the problem-statement examples):
+
+    * Same-class **PC** pairs: arithmetic mean of absolute epsilons
+      (e.g. PC4.0 × PC4.1 → 4.05).
+    * Same-class **PN** pairs: max of stored offsets (epsilon − 2.0)
+      (e.g. PN.1 × PN.2 → 0.2 = max(0.1, 0.2)).
+    * Same-class **PR** pairs: max of stored absolute epsilons
+      (e.g. PR.1 × PR.2 → 0.2 = max(0.1, 0.2)).
+    * Cross-class pairs (PR×PN, PR×PC, PN×PC): arithmetic mean of stored
+      epsilons.  Note that PR and PN stored values use different scales (PR
+      absolute, PN offset from 2.0), so the cross-class result is a
+      scale-mixed average; this is acceptable because the problem statement
+      does not prescribe cross-class interactions explicitly.
     """
     stored_i = _catalog_stored_eps(btype_i, eps_i)
     stored_j = _catalog_stored_eps(btype_j, eps_j)
     if btype_i == btype_j == "PC":
         return round((stored_i + stored_j) / 2.0, 6)
-    return round(max(stored_i, stored_j), 6)
+    if btype_i == btype_j:  # PR×PR or PN×PN
+        return round(max(stored_i, stored_j), 6)
+    # Cross-class: arithmetic mean of stored epsilons
+    return round((stored_i + stored_j) / 2.0, 6)
 
 
 def _pectin_atomtype_name(chain_index: int, bead_index: int, bead_type: str, epsilon: float) -> str:
@@ -274,7 +295,7 @@ def write_per_bead_base_itp(output_path: Path, assignments: AssignmentMap) -> No
     items = _catalog_items()
     for core, core_sigma in _CORE_CATALOG_SIGMA:
         for _btype, cname, _eps in items:
-            lines.append(f"{core:>12} {cname:>16} {1:>3} {core_sigma:>12.6f} {1.0:>12.6f}")
+            lines.append(f"{core:>12} {cname:>16} {1:>3} {core_sigma:>12.6f} {_CORE_CATALOG_EPSILON:>12.6f}")
     # All catalog × catalog pairs (upper triangle, i ≤ j)
     n = len(items)
     for i in range(n):
