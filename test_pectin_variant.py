@@ -48,11 +48,12 @@ class TestPectinVariant(unittest.TestCase):
     # ------------------------------------------------------------------ #
 
     def test_atomtype_names_include_type_and_step(self):
-        self.assertEqual(build_sweep._pectin_atomtype_name(1, 3, "PR", 0.9), "PRe09c1b3")
-        self.assertEqual(build_sweep._pectin_atomtype_name(1, 10, "PN", 2.1), "PNe21c1b10")
-        self.assertEqual(build_sweep._pectin_atomtype_name(2, 19, "PC", 4.8), "PCe48c2b19")
-        self.assertEqual(build_sweep._pectin_atomtype_name(1, 5, "PC", 4.0), "PCe40c1b5")
-        self.assertEqual(build_sweep._pectin_atomtype_name(1, 1, "PN", 3.5), "PNe35c1b1")
+        # chain_index and bead_index are no longer encoded; catalog names are shared
+        self.assertEqual(build_sweep._pectin_atomtype_name(1, 3, "PR", 0.9), "PR.9")
+        self.assertEqual(build_sweep._pectin_atomtype_name(1, 10, "PN", 2.1), "PN.1")
+        self.assertEqual(build_sweep._pectin_atomtype_name(2, 19, "PC", 4.8), "PC4.8")
+        self.assertEqual(build_sweep._pectin_atomtype_name(1, 5, "PC", 4.0), "PC4.0")
+        self.assertEqual(build_sweep._pectin_atomtype_name(1, 1, "PN", 3.5), "PN1.5")
 
     # ------------------------------------------------------------------ #
     # Assignment generation
@@ -88,8 +89,14 @@ class TestPectinVariant(unittest.TestCase):
     def test_assignments_support_multiple_chains(self):
         assignments = build_sweep.assign_all_chain_bead_epsilons(2, rng=random.Random(3))
         self.assertEqual(sorted(assignments.keys()), [1, 2])
-        self.assertTrue(assignments[1][1]["atomtype"].endswith("c1b1"))
-        self.assertTrue(assignments[2][30]["atomtype"].endswith("c2b30"))
+        # Atomtype is now a shared catalog name (no chain/bead position encoding)
+        for chain_idx in (1, 2):
+            for bead_idx in (1, 30):
+                atype = str(assignments[chain_idx][bead_idx]["atomtype"])
+                self.assertTrue(
+                    atype.startswith("PR") or atype.startswith("PN") or atype.startswith("PC"),
+                    msg=f"Unexpected atomtype prefix: {atype}",
+                )
 
     # ------------------------------------------------------------------ #
     # Base ITP generation
@@ -112,68 +119,33 @@ class TestPectinVariant(unittest.TestCase):
                     break
                 if in_atomtypes and s and not s.startswith(";"):
                     names.append(s.split()[0])
-        # Core types must come first
-        self.assertEqual(names[:6], ["C", "X", "P", "PN", "PR", "PC"])
-        # Per-bead atomtypes follow (30 total for 1 chain)
-        per_bead_names = names[6:]
-        self.assertEqual(len(per_bead_names), build_sweep.BEADS_PER_FIBER)
-        for n in per_bead_names:
-            self.assertTrue(
-                n.startswith("PR") or n.startswith("PN") or n.startswith("PC"),
-                msg=f"Unexpected atomtype prefix: {n}",
-            )
+        # Core C/X/P types come first
+        self.assertEqual(names[:3], ["C", "X", "P"])
+        # All catalog types must be present
+        catalog = build_sweep.catalog_type_names()
+        self.assertEqual(len(catalog), 51)  # 20 PR + 20 PN + 11 PC
+        for cname in catalog:
+            self.assertIn(cname, names)
 
     def test_base_itp_per_bead_epsilon_matches_assignment(self):
         rng = random.Random(99)
         assignments = build_sweep.assign_all_chain_bead_epsilons(1, rng=rng)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            out_path = Path(tmpdir) / "sudowoodo_base.itp"
-            build_sweep.write_per_bead_base_itp(out_path, assignments)
-            text = out_path.read_text()
-            # Build a map atomtype->epsilon from the file
-            in_atomtypes = False
-            file_map = {}
-            for line in text.splitlines():
-                s = line.strip()
-                if s == "[ atomtypes ]":
-                    in_atomtypes = True
-                    continue
-                if in_atomtypes and s.startswith("["):
-                    break
-                if in_atomtypes and s and not s.startswith(";"):
-                    parts = s.split()
-                    if len(parts) >= 7:
-                        file_map[parts[0]] = float(parts[-1])
+        # The assigned atomtype name must be exactly the catalog name for that epsilon
         for a in build_sweep.iter_assignments(assignments):
-            atype = str(a["atomtype"])
-            self.assertIn(atype, file_map, msg=f"{atype} missing from atomtypes")
-            self.assertAlmostEqual(file_map[atype], float(a["epsilon"]), places=5)
+            expected = build_sweep._catalog_type_name(str(a["bead_type"]), float(a["epsilon"]))
+            self.assertEqual(str(a["atomtype"]), expected,
+                msg=f"bead_type={a['bead_type']} epsilon={a['epsilon']}")
 
     def test_base_itp_has_core_nonbond_params(self):
         assignments = build_sweep.assign_all_chain_bead_epsilons(1, rng=random.Random(1))
         with tempfile.TemporaryDirectory() as tmpdir:
             out_path = Path(tmpdir) / "sudowoodo_base.itp"
             build_sweep.write_per_bead_base_itp(out_path, assignments)
-            lines = out_path.read_text().splitlines()
-            start = lines.index("[ nonbond_params ]") + 1
-            nonbond_entries = []
-            for line in lines[start:]:
-                s = line.strip()
-                if not s or s.startswith(";"):
-                    continue
-                if s.startswith("["):
-                    break
-                parts = s.split()
-                if len(parts) == 5:
-                    nonbond_entries.append(parts)
-        self.assertEqual(nonbond_entries, [
-            ["C", "C", "1", "2.673000", "1.000000"],
-            ["C", "X", "1", "2.087000", "1.000000"],
-            ["C", "P", "1", "1.837000", "1.000000"],
-            ["X", "X", "1", "1.500000", "1.000000"],
-            ["X", "P", "1", "1.250000", "1.000000"],
-            ["P", "P", "1", "1.000000", "1.000000"],
-        ])
+            text = out_path.read_text()
+        # The six core C/X/P pairs must be present (file also contains catalog pairs)
+        for pair_str in ["C            C", "C            X", "C            P",
+                         "X            X", "X            P", "P            P"]:
+            self.assertIn(pair_str, text, msg=f"Missing core nonbond pair: {pair_str!r}")
 
     # ------------------------------------------------------------------ #
     # Per-fiber ITP generation
@@ -221,11 +193,13 @@ class TestPectinVariant(unittest.TestCase):
         self.assertIn("k_bond", itp_text)
         self.assertIn("k_theta", itp_text)
 
-    def test_per_fiber_itps_have_distinct_atomtypes(self):
-        """Every bead across every fiber must have a unique atomtype name."""
+    def test_per_fiber_itps_use_catalog_atomtypes(self):
+        """Every bead across every fiber must use a shared catalog atomtype."""
         assignments = build_sweep.assign_all_chain_bead_epsilons(4, rng=random.Random(77))
-        all_atomtypes = [a["atomtype"] for a in build_sweep.iter_assignments(assignments)]
-        self.assertEqual(len(all_atomtypes), len(set(all_atomtypes)))
+        catalog = set(build_sweep.catalog_type_names())
+        for a in build_sweep.iter_assignments(assignments):
+            self.assertIn(str(a["atomtype"]), catalog,
+                msg=f"atomtype {a['atomtype']!r} not in catalog")
 
     # ------------------------------------------------------------------ #
     # build_variant integration
@@ -257,11 +231,12 @@ class TestPectinVariant(unittest.TestCase):
     # ------------------------------------------------------------------ #
 
     def test_append_per_bead_atomtypes_extends_existing_itp(self):
-        """Appending should add per-bead lines without touching nonbond_params."""
+        """Appending should inject the full catalog into an existing ITP without
+        disturbing nonbond_params; a second call must be a no-op."""
         assignments = build_sweep.assign_all_chain_bead_epsilons(1, rng=random.Random(10))
         with tempfile.TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir) / "sudowoodo_base.itp"
-            # Write a minimal pre-existing base ITP (as afm_build_sweep.py would)
+            # Minimal pre-existing ITP (as afm_build_sweep.py would write)
             base_path.write_text(
                 "[ atomtypes ]\n"
                 "C  1 100.0 0.000 A 0.0 0.0\n"
@@ -272,17 +247,96 @@ class TestPectinVariant(unittest.TestCase):
             )
             build_sweep.append_per_bead_atomtypes(base_path, assignments)
             text = base_path.read_text()
-        # Core types still present
+        # Core C/X/P types still present
         self.assertIn("C  1 100.0", text)
-        # nonbond_params still present and unchanged
+        # nonbond_params block still present and unchanged
         self.assertIn("C C 1 2.673 2.5", text)
-        # Per-bead atomtypes present
-        for a in build_sweep.iter_assignments(assignments):
-            self.assertIn(str(a["atomtype"]), text)
-        # Per-bead lines inserted BEFORE [ nonbond_params ]
+        # All catalog type names are now in the file
+        for cname in build_sweep.catalog_type_names():
+            self.assertIn(cname, text, msg=f"catalog type {cname!r} missing")
+        # Catalog entries appear BEFORE [ nonbond_params ]
         idx_nb = text.index("[ nonbond_params ]")
-        for a in build_sweep.iter_assignments(assignments):
-            self.assertLess(text.index(str(a["atomtype"])), idx_nb)
+        for cname in build_sweep.catalog_type_names():
+            self.assertLess(text.index(cname), idx_nb,
+                msg=f"{cname!r} not before nonbond_params")
+        # Second call must be a no-op (no duplication)
+        with tempfile.TemporaryDirectory() as tmpdir2:
+            base_path2 = Path(tmpdir2) / "sudowoodo_base.itp"
+            base_path2.write_text(text)
+            build_sweep.append_per_bead_atomtypes(base_path2, assignments)
+            self.assertEqual(base_path2.read_text(), text)
+
+    # ------------------------------------------------------------------ #
+    # Catalog naming and cross-term rules
+    # ------------------------------------------------------------------ #
+
+    def test_catalog_type_names_count_and_format(self):
+        """51 catalog types total: 20 PR + 20 PN + 11 PC, in that order."""
+        names = build_sweep.catalog_type_names()
+        self.assertEqual(len(names), 51)
+        pr_names = [n for n in names if n.startswith("PR")]
+        pn_names = [n for n in names if n.startswith("PN")]
+        pc_names = [n for n in names if n.startswith("PC")]
+        self.assertEqual(len(pr_names), 20)
+        self.assertEqual(len(pn_names), 20)
+        self.assertEqual(len(pc_names), 11)
+        # PR comes before PN comes before PC in the returned list
+        self.assertEqual(names[:20], pr_names)
+        self.assertEqual(names[20:40], pn_names)
+        self.assertEqual(names[40:], pc_names)
+        # Spot-check specific names
+        self.assertIn("PR.1", names)
+        self.assertIn("PR2.0", names)
+        self.assertIn("PN.1", names)
+        self.assertIn("PN2.0", names)
+        self.assertIn("PC4.0", names)
+        self.assertIn("PC5.0", names)
+
+    def test_catalog_cross_eps_pn_uses_max(self):
+        """PN×PN cross-term = max of the two stored offsets (epsilon − 2.0)."""
+        # PN.1 (ε=2.1, offset=0.1), PN.2 (ε=2.2, offset=0.2)
+        self.assertAlmostEqual(
+            build_sweep._catalog_cross_eps("PN", 2.1, "PN", 2.1), 0.1)
+        self.assertAlmostEqual(
+            build_sweep._catalog_cross_eps("PN", 2.1, "PN", 2.2), 0.2)
+        self.assertAlmostEqual(
+            build_sweep._catalog_cross_eps("PN", 2.1, "PN", 2.3), 0.3)
+
+    def test_catalog_cross_eps_pc_uses_mean(self):
+        """PC×PC cross-term = arithmetic mean of the two absolute epsilons."""
+        self.assertAlmostEqual(
+            build_sweep._catalog_cross_eps("PC", 4.0, "PC", 4.0), 4.0)
+        self.assertAlmostEqual(
+            build_sweep._catalog_cross_eps("PC", 4.0, "PC", 4.1), 4.05)
+        self.assertAlmostEqual(
+            build_sweep._catalog_cross_eps("PC", 4.1, "PC", 4.1), 4.1)
+
+    def test_base_itp_contains_pn_cross_terms(self):
+        """PN.1–PN.1 and PN.1–PN.2 cross-terms should appear in nonbond_params."""
+        assignments = build_sweep.assign_all_chain_bead_epsilons(1, rng=random.Random(1))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_path = Path(tmpdir) / "sudowoodo_base.itp"
+            build_sweep.write_per_bead_base_itp(out_path, assignments)
+            text = out_path.read_text()
+        # PN.1–PN.1 self-interaction: stored ε = 0.1 (offset from 2.0)
+        self.assertIn("PN.1", text)
+        # Check the nonbond_params block contains PN.1 PN.1 with epsilon 0.1
+        nb_start = text.index("[ nonbond_params ]")
+        nb_text = text[nb_start:]
+        self.assertRegex(nb_text, r"PN\.1\s+PN\.1\s+1\s+1\.000000\s+0\.100000")
+        self.assertRegex(nb_text, r"PN\.1\s+PN\.2\s+1\s+1\.000000\s+0\.200000")
+
+    def test_base_itp_contains_pc_cross_terms(self):
+        """PC4.0–PC4.0 and PC4.0–PC4.1 cross-terms should appear in nonbond_params."""
+        assignments = build_sweep.assign_all_chain_bead_epsilons(1, rng=random.Random(1))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_path = Path(tmpdir) / "sudowoodo_base.itp"
+            build_sweep.write_per_bead_base_itp(out_path, assignments)
+            text = out_path.read_text()
+        nb_start = text.index("[ nonbond_params ]")
+        nb_text = text[nb_start:]
+        self.assertRegex(nb_text, r"PC4\.0\s+PC4\.0\s+1\s+1\.000000\s+4\.000000")
+        self.assertRegex(nb_text, r"PC4\.0\s+PC4\.1\s+1\s+1\.000000\s+4\.050000")
 
 
 if __name__ == "__main__":
