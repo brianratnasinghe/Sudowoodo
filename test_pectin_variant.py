@@ -52,7 +52,7 @@ class TestPectinVariant(unittest.TestCase):
         self.assertEqual(build_sweep._pectin_atomtype_name(1, 10, "PN", 2.1), "PNe21c1b10")
         self.assertEqual(build_sweep._pectin_atomtype_name(2, 19, "PC", 4.8), "PCe48c2b19")
         self.assertEqual(build_sweep._pectin_atomtype_name(1, 5, "PC", 4.0), "PCe40c1b5")
-        self.assertEqual(build_sweep._pectin_atomtype_name(1, 1, "PN", 4.0), "PNe40c1b1")
+        self.assertEqual(build_sweep._pectin_atomtype_name(1, 1, "PN", 3.5), "PNe35c1b1")
 
     # ------------------------------------------------------------------ #
     # Assignment generation
