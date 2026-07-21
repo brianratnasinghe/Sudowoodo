@@ -50,15 +50,14 @@ CORE_NONBOND_PARAMS = (
 )
 
 # Sigma values for core beads interacting with catalog pectin beads.
-# All such pairs use epsilon=1.0 (constant, as specified in the problem statement:
-# e.g. C–PN.1: sigma=1.837, epsilon=1.0).
 _CORE_CATALOG_SIGMA: Tuple[Tuple[str, float], ...] = (
     ("C", 1.837),
     ("X", 1.250),
     ("P", 1.000),
 )
-# Epsilon for every core × catalog pair
-_CORE_CATALOG_EPSILON = 1.0
+# Epsilon for each core bead type interacting with catalog pectin beads.
+# C uses 2.5 to match the C–P interaction; X and P use 1.0.
+_CORE_CATALOG_EPSILON: Dict[str, float] = {"C": 2.5, "X": 1.0, "P": 1.0}
 
 
 Assignment = Dict[str, Union[float, int, str]]
@@ -288,7 +287,7 @@ def write_per_bead_base_itp(output_path: Path, assignments: AssignmentMap) -> No
     items = _catalog_items()
     for core, core_sigma in _CORE_CATALOG_SIGMA:
         for _btype, cname, _eps in items:
-            lines.append(f"{core:>12} {cname:>16} {1:>3} {core_sigma:>12.6f} {_CORE_CATALOG_EPSILON:>12.6f}")
+            lines.append(f"{core:>12} {cname:>16} {1:>3} {core_sigma:>12.6f} {_CORE_CATALOG_EPSILON[core]:>12.6f}")
     # All catalog × catalog pairs (upper triangle, i ≤ j)
     n = len(items)
     for i in range(n):
