@@ -118,14 +118,27 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
             parts = line.split()
             i, j = parts[0], parts[1]
             epsilon = float(parts[4])
-            # For core×catalog pairs use the corresponding core×P epsilon so that
-            # --epsilon XP=2.5 controls both the X–P pair and all X–Pct* pairs.
-            if not _is_catalog_type(i) and _is_catalog_type(j):
-                new_epsilon = epsilon_map.get((i, 'P'), epsilon)
-            elif _is_catalog_type(i) and not _is_catalog_type(j):
-                new_epsilon = epsilon_map.get(('P', j), epsilon)
-            else:
+            is_i_catalog = _is_catalog_type(i)
+            is_j_catalog = _is_catalog_type(j)
+
+            if is_i_catalog and is_j_catalog:
+                # Preserve pectin catalog-pair epsilons from the base file (these
+                # encode the per-type pectin interaction matrix).
+                new_epsilon = epsilon
+            elif (not is_i_catalog) and (not is_j_catalog):
+                # Core-core pair (CC/CX/CP/XX/XP/PP)
                 new_epsilon = epsilon_map.get((i, j), epsilon)
+            else:
+                # Core-catalog pair: infer core partner and map through core-P.
+                core = i if not is_i_catalog else j
+                if core in ('C', 'X'):
+                    # CP / XP should control C-Pct* / X-Pct* as requested.
+                    new_epsilon = epsilon_map.get((core, 'P'), epsilon)
+                elif core == 'P':
+                    # PP is only a fallback for unassigned P-catalog defaults.
+                    new_epsilon = epsilon_map.get(('P', 'P'), epsilon) if abs(epsilon - 1.0) < 1e-9 else epsilon
+                else:
+                    new_epsilon = epsilon
             parts[4] = f"{new_epsilon:.6f}"
             out.append(' '.join(parts))
         else:
