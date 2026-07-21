@@ -98,6 +98,10 @@ def parse_ktheta_values(ktheta_str):
     
     return result
 
+def _is_catalog_type(name):
+    """Return True if *name* is a shared pectin catalog atomtype (PctRep/PctNeu/PctXlk)."""
+    return name.startswith('Pct')
+
 def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
     re_lj = re.compile(r'^(\s*\w+\s+\w+\s+\d+\s+([0-9eE\.\+\-]+)\s+([0-9eE\.\+\-]+))')
     lines = itp_path.read_text().splitlines()
@@ -113,9 +117,15 @@ def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
         if in_nb and re_lj.match(line):
             parts = line.split()
             i, j = parts[0], parts[1]
-            sigma = float(parts[3])
             epsilon = float(parts[4])
-            new_epsilon = epsilon_map.get((i, j), epsilon)
+            # For core×catalog pairs use the corresponding core×P epsilon so that
+            # --epsilon XP=2.5 controls both the X–P pair and all X–Pct* pairs.
+            if not _is_catalog_type(i) and _is_catalog_type(j):
+                new_epsilon = epsilon_map.get((i, 'P'), epsilon)
+            elif _is_catalog_type(i) and not _is_catalog_type(j):
+                new_epsilon = epsilon_map.get(('P', j), epsilon)
+            else:
+                new_epsilon = epsilon_map.get((i, j), epsilon)
             parts[4] = f"{new_epsilon:.6f}"
             out.append(' '.join(parts))
         else:

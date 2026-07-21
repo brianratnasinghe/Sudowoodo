@@ -56,8 +56,10 @@ _CORE_CATALOG_SIGMA: Tuple[Tuple[str, float], ...] = (
     ("P", 1.000),
 )
 # Epsilon for each core bead type interacting with catalog pectin beads.
-# C uses 2.5 to match the C–P interaction; X and P use 1.0.
-_CORE_CATALOG_EPSILON: Dict[str, float] = {"C": 2.5, "X": 1.0, "P": 1.0}
+# All three core types use 2.5 to match the C–P interaction epsilon.
+# When afm_build_sweep.py is used, the --epsilon flag overrides these values
+# via scale_epsilon_in_itp (which propagates the core×P map entry to core×Pct* pairs).
+_CORE_CATALOG_EPSILON: Dict[str, float] = {"C": 2.5, "X": 2.5, "P": 2.5}
 
 
 Assignment = Dict[str, Union[float, int, str]]
