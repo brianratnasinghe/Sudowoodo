@@ -20,6 +20,8 @@ Optional:
 import argparse, shutil, os, re, random, textwrap, subprocess
 from pathlib import Path
 
+import build_sweep
+
 def get_args():
     p = argparse.ArgumentParser(description="AFM cell wall builder and sweep tool (custom epsilon mapping)")
     p.add_argument('--out', type=Path, required=True, help="Output folder")
@@ -40,6 +42,10 @@ def get_args():
     p.add_argument('--deform', type=str, default=None,
                    help="Deform tensor for production.mdp (e.g. '0 0 0.0001 0 0 0'). "
                         "Written as 'deform = <value>' in production.mdp when provided.")
+    p.add_argument('--pc', type=int, default=build_sweep.PC_PER_FIBER,
+                   help=f"Crosslinking (PC) beads per pectin fiber (default {build_sweep.PC_PER_FIBER})")
+    p.add_argument('--pr', type=int, default=build_sweep.PR_PER_FIBER,
+                   help=f"Repulsion (PR) beads per pectin fiber (default {build_sweep.PR_PER_FIBER})")
     return p.parse_args() 
 
 def ensure_dir(path):
@@ -191,7 +197,8 @@ def generate_topology(args, out_dir):
     """)
     write_text(out_dir / "afm_system.top", top_txt)
 
-def generate_itps(args, out_dir, epsilon_map, ktheta_values=None):
+def generate_itps(args, out_dir, epsilon_map, ktheta_values=None,
+                  pc_per_fiber=None, pr_per_fiber=None, seed=0):
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)
     
@@ -201,7 +208,6 @@ def generate_itps(args, out_dir, epsilon_map, ktheta_values=None):
     # Polymer-specific files with potential ktheta modification
     itp_files = [
         ('toppar_custom/sudowoodo_xyloglucan.itp', toppar_dir / "sudowoodo_xyloglucan.itp", 'xyloglucan'),
-        ('toppar_custom/sudowoodo_pectin.itp', toppar_dir / "sudowoodo_pectin.itp", 'pectin'),
         ('toppar_custom/sudowoodo_cellulose.itp', toppar_dir / "sudowoodo_cellulose.itp", 'cellulose')
     ]
     
@@ -210,6 +216,24 @@ def generate_itps(args, out_dir, epsilon_map, ktheta_values=None):
     for src, dst, polymer_name in itp_files:
         ktheta_value = ktheta_values.get(polymer_name)
         modify_ktheta_in_itp(Path(src), dst, ktheta_value)
+
+    # Pectin ITP: regenerate with custom bead composition when pc/pr are specified,
+    # otherwise copy from template.
+    pectin_dst = toppar_dir / "sudowoodo_pectin.itp"
+    _pc = pc_per_fiber if pc_per_fiber is not None else build_sweep.PC_PER_FIBER
+    _pr = pr_per_fiber if pr_per_fiber is not None else build_sweep.PR_PER_FIBER
+    if _pc != build_sweep.PC_PER_FIBER or _pr != build_sweep.PR_PER_FIBER:
+        build_sweep.write_default_pectin_itp(pectin_dst, seed=seed,
+                                             pc_per_fiber=_pc, pr_per_fiber=_pr)
+    else:
+        modify_ktheta_in_itp(Path('toppar_custom/sudowoodo_pectin.itp'), pectin_dst,
+                             ktheta_values.get('pectin'))
+        return  # ktheta already applied above, nothing more to do
+
+    # Apply ktheta on top of the freshly generated pectin ITP.
+    ktheta_pectin = ktheta_values.get('pectin')
+    if ktheta_pectin is not None:
+        modify_ktheta_in_itp(pectin_dst, pectin_dst, ktheta_pectin)
 
 def write_mdp_files(args, out_dir):
     def mdp_default_em():
@@ -385,7 +409,8 @@ def main():
     write_log(args.out, seed, args, epsilon_map, ktheta_values)
     randomize_structures(seed, args.out)
     generate_topology(args, args.out)
-    generate_itps(args, args.out, epsilon_map, ktheta_values)
+    generate_itps(args, args.out, epsilon_map, ktheta_values,
+                  pc_per_fiber=args.pc, pr_per_fiber=args.pr, seed=seed)
     write_mdp_files(args, args.out)
     write_run_sh(args, args.out)
     build_afm_system(seed, args.out, args.ktheta, args.multilayer)

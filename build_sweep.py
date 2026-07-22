@@ -204,20 +204,28 @@ def _pectin_atomtype_name(chain_index: int, bead_index: int, bead_type: str, eps
 def assign_all_chain_bead_epsilons(
     chain_count: int,
     rng: random.Random | None = None,
+    pc_per_fiber: int = PC_PER_FIBER,
+    pr_per_fiber: int = PR_PER_FIBER,
 ) -> AssignmentMap:
     """Assign per-bead epsilons for *chain_count* pectin chains.
 
-    Each chain receives a fixed composition of
-    ``PC_PER_FIBER`` PC beads, ``PR_PER_FIBER`` PR beads, and
-    ``PN_PER_FIBER`` PN beads, placed in a randomised order.
+    Each chain receives a composition of *pc_per_fiber* PC beads,
+    *pr_per_fiber* PR beads, and the remainder as PN beads (up to
+    ``BEADS_PER_FIBER`` total), placed in a randomised order.
     The epsilon for each bead is drawn uniformly from the 0.1-step
     grid within its type's valid range.
     """
+    pn = BEADS_PER_FIBER - pc_per_fiber - pr_per_fiber
+    if pn < 0:
+        raise ValueError(
+            f"pc_per_fiber ({pc_per_fiber}) + pr_per_fiber ({pr_per_fiber}) "
+            f"exceeds BEADS_PER_FIBER ({BEADS_PER_FIBER})"
+        )
     rng = rng or random.Random()
     assignments: AssignmentMap = {}
     for chain_index in range(1, chain_count + 1):
         bead_types: List[str] = (
-            ["PC"] * PC_PER_FIBER + ["PR"] * PR_PER_FIBER + ["PN"] * PN_PER_FIBER
+            ["PC"] * pc_per_fiber + ["PR"] * pr_per_fiber + ["PN"] * pn
         )
         rng.shuffle(bead_types)
         chain_assignments: Dict[int, Assignment] = {}
@@ -393,15 +401,24 @@ def write_per_fiber_pectin_itps(toppar_dir: Path, assignments: AssignmentMap) ->
         )
 
 
-def write_default_pectin_itp(output_path: Path, seed: int = 0) -> None:
+def write_default_pectin_itp(
+    output_path: Path,
+    seed: int = 0,
+    pc_per_fiber: int = PC_PER_FIBER,
+    pr_per_fiber: int = PR_PER_FIBER,
+) -> None:
     """Write a static ``sudowoodo_pectin.itp`` template using catalog atomtypes.
 
-    The molecule is named ``Pctn`` and uses the standard composition of
-    ``PC_PER_FIBER`` PctXlk + ``PR_PER_FIBER`` PctRep + ``PN_PER_FIBER`` PctNeu
-    beads drawn with the given *seed* for reproducibility.  All atomtype names
-    reference shared catalog entries defined in ``sudowoodo_base.itp``.
+    The molecule is named ``Pctn`` and uses a composition of *pc_per_fiber*
+    PctXlk + *pr_per_fiber* PctRep + remaining PctNeu beads (up to
+    ``BEADS_PER_FIBER`` total) drawn with the given *seed* for reproducibility.
+    All atomtype names reference shared catalog entries defined in
+    ``sudowoodo_base.itp``.
     """
-    assignments = assign_all_chain_bead_epsilons(1, rng=random.Random(seed))
+    assignments = assign_all_chain_bead_epsilons(
+        1, rng=random.Random(seed),
+        pc_per_fiber=pc_per_fiber, pr_per_fiber=pr_per_fiber,
+    )
     chain_assignments = assignments[1]
     n = len(chain_assignments)
     lines = [
@@ -450,6 +467,8 @@ def build_variant(
     output_dir: Path,
     chain_count: int = 1,
     rng: random.Random | None = None,
+    pc_per_fiber: int = PC_PER_FIBER,
+    pr_per_fiber: int = PR_PER_FIBER,
 ) -> AssignmentMap:
     """Build a complete pectin variant in *output_dir*.
 
@@ -461,7 +480,9 @@ def build_variant(
     * ``pectin_assignment_report.txt`` – sorted assignment listing
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    assignments = assign_all_chain_bead_epsilons(chain_count, rng=rng)
+    assignments = assign_all_chain_bead_epsilons(chain_count, rng=rng,
+                                                 pc_per_fiber=pc_per_fiber,
+                                                 pr_per_fiber=pr_per_fiber)
     write_per_bead_base_itp(output_dir / "sudowoodo_base.itp", assignments)
     write_per_fiber_pectin_itps(output_dir, assignments)
     write_assignment_report(output_dir / "pectin_assignment_report.txt", assignments)
@@ -473,13 +494,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out", type=Path, required=True, help="Output directory")
     parser.add_argument("--chains", type=int, default=1, help="Number of pectin chains (default 1)")
     parser.add_argument("--seed", type=int, default=None, help="Random seed")
+    parser.add_argument("--pc", type=int, default=PC_PER_FIBER,
+                        help=f"Crosslinking (PC) beads per fiber (default {PC_PER_FIBER})")
+    parser.add_argument("--pr", type=int, default=PR_PER_FIBER,
+                        help=f"Repulsion (PR) beads per fiber (default {PR_PER_FIBER})")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     rng = random.Random(args.seed) if args.seed is not None else random.Random()
-    build_variant(args.out, chain_count=args.chains, rng=rng)
+    build_variant(args.out, chain_count=args.chains, rng=rng,
+                  pc_per_fiber=args.pc, pr_per_fiber=args.pr)
 
 
 if __name__ == "__main__":
