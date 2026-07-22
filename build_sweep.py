@@ -401,15 +401,24 @@ def write_per_fiber_pectin_itps(toppar_dir: Path, assignments: AssignmentMap) ->
         )
 
 
-def write_default_pectin_itp(output_path: Path, seed: int = 0) -> None:
+def write_default_pectin_itp(
+    output_path: Path,
+    seed: int = 0,
+    pc_per_fiber: int = PC_PER_FIBER,
+    pr_per_fiber: int = PR_PER_FIBER,
+) -> None:
     """Write a static ``sudowoodo_pectin.itp`` template using catalog atomtypes.
 
-    The molecule is named ``Pctn`` and uses the standard composition of
-    ``PC_PER_FIBER`` PctXlk + ``PR_PER_FIBER`` PctRep + ``PN_PER_FIBER`` PctNeu
-    beads drawn with the given *seed* for reproducibility.  All atomtype names
-    reference shared catalog entries defined in ``sudowoodo_base.itp``.
+    The molecule is named ``Pctn`` and uses a composition of *pc_per_fiber*
+    PctXlk + *pr_per_fiber* PctRep + remaining PctNeu beads (up to
+    ``BEADS_PER_FIBER`` total) drawn with the given *seed* for reproducibility.
+    All atomtype names reference shared catalog entries defined in
+    ``sudowoodo_base.itp``.
     """
-    assignments = assign_all_chain_bead_epsilons(1, rng=random.Random(seed))
+    assignments = assign_all_chain_bead_epsilons(
+        1, rng=random.Random(seed),
+        pc_per_fiber=pc_per_fiber, pr_per_fiber=pr_per_fiber,
+    )
     chain_assignments = assignments[1]
     n = len(chain_assignments)
     lines = [
