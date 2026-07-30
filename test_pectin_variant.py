@@ -126,10 +126,10 @@ class TestPectinVariant(unittest.TestCase):
             )
             build_sweep.append_per_bead_atomtypes(base_path, assignments)
             text = base_path.read_text()
-        self.assertRegex(text, r"C\s+C\s+1\s+2\\.673000\s+9\\.100000")
-        self.assertRegex(text, r"C\s+PctRep\s+1\s+1\\.837000\s+3\\.200000")
-        self.assertRegex(text, r"X\s+PctNeu\s+1\s+1\\.250000\s+2\\.300000")
-        self.assertRegex(text, r"P\s+PctXlk\s+1\s+1\\.000000\s+1\\.400000")
+        self.assertRegex(text, r"C\s+C\s+1\s+2\.673000\s+9\.100000")
+        self.assertRegex(text, r"C\s+PctRep\s+1\s+1\.837000\s+3\.200000")
+        self.assertRegex(text, r"X\s+PctNeu\s+1\s+1\.250000\s+2\.300000")
+        self.assertRegex(text, r"P\s+PctXlk\s+1\s+1\.000000\s+1\.400000")
 
 
 if __name__ == "__main__":
