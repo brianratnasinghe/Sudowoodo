@@ -68,8 +68,8 @@ class TestPectinVariant(unittest.TestCase):
         self.assertRegex(text, r"PctRep\s+PctRep\s+1\s+1\.000000\s+0\.400000")
         self.assertRegex(text, r"PctNeu\s+PctNeu\s+1\s+1\.000000\s+1\.200000")
         self.assertRegex(text, r"PctXlk\s+PctXlk\s+1\s+1\.000000\s+4\.800000")
-        self.assertRegex(text, r"PctRep\s+PctNeu\s+1\s+1\.000000\s+0\.800000")
-        self.assertRegex(text, r"PctNeu\s+PctXlk\s+1\s+1\.000000\s+3\.000000")
+        self.assertRegex(text, r"PctRep\s+PctNeu\s+1\s+1\.000000\s+2\.500000")
+        self.assertRegex(text, r"PctNeu\s+PctXlk\s+1\s+1\.000000\s+2\.500000")
 
     def test_per_fiber_itp_molecule_name(self):
         assignments = build_sweep.assign_all_chain_bead_epsilons(3, rng=random.Random(5))

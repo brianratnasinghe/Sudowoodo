@@ -16,10 +16,12 @@ PR_PER_FIBER = 2
 PN_PER_FIBER = BEADS_PER_FIBER - PC_PER_FIBER - PR_PER_FIBER
 
 DEFAULT_EPSILON_BY_TYPE: Dict[str, float] = {
-    "PR": 0.1,
-    "PN": 2.5,
-    "PC": 4.0,
+    "PR": 0.4,
+    "PN": 2.2,
+    "PC": 4.8,
 }
+
+DEFAULT_PCT_CROSS_EPSILON: float = 2.5
 
 PECTIN_TYPE_NAMES: Dict[str, str] = {
     "PR": "PctRep",
@@ -38,12 +40,12 @@ CORE_ATOMTYPES = (
 )
 
 CORE_NONBOND_PARAMS = (
-    ("C", "C", 1, 2.673000, 1.000000),
-    ("C", "X", 1, 2.087000, 1.000000),
-    ("C", "P", 1, 1.837000, 1.000000),
-    ("X", "X", 1, 1.500000, 1.000000),
-    ("X", "P", 1, 1.250000, 1.000000),
-    ("P", "P", 1, 1.000000, 1.000000),
+    ("C", "C", 1, 2.673000, 2.500000),
+    ("C", "X", 1, 2.087000, 2.500000),
+    ("C", "P", 1, 1.837000, 2.500000),
+    ("X", "X", 1, 1.500000, 2.500000),
+    ("X", "P", 1, 1.250000, 2.500000),
+    ("P", "P", 1, 1.000000, 2.500000),
 )
 
 CORE_CATALOG_SIGMA: Tuple[Tuple[str, float], ...] = (
@@ -52,7 +54,7 @@ CORE_CATALOG_SIGMA: Tuple[Tuple[str, float], ...] = (
     ("P", 1.000),
 )
 
-CORE_CATALOG_EPSILON: Dict[str, float] = {"C": 2.5, "X": 2.5, "P": 1.0}
+CORE_CATALOG_EPSILON: Dict[str, float] = {"C": 2.5, "X": 2.5, "P": 2.5}
 
 Assignment = Dict[str, Union[float, int, str]]
 AssignmentMap = Dict[int, Dict[int, Assignment]]
@@ -107,9 +109,11 @@ def _catalog_items(epsilon_by_type: Dict[str, float]) -> List[Tuple[str, str, fl
     ]
 
 
-def _catalog_cross_eps(btype_i: str, eps_i: float, btype_j: str, eps_j: float) -> float:
+def _catalog_cross_eps(btype_i: str, eps_i: float, btype_j: str, eps_j: float, cross_epsilon: float | None = None) -> float:
     if btype_i == btype_j:
         return round(float(eps_i), 6)
+    if cross_epsilon is not None:
+        return round(float(cross_epsilon), 6)
     return round((float(eps_i) + float(eps_j)) / 2.0, 6)
 
 
@@ -179,6 +183,7 @@ def write_per_bead_base_itp(
     epsilon_by_type: Dict[str, float] | None = None,
     core_nonbond_params: Tuple[Tuple[str, str, int, float, float], ...] = CORE_NONBOND_PARAMS,
     core_catalog_epsilon: Dict[str, float] | None = None,
+    pct_cross_epsilon: float | None = DEFAULT_PCT_CROSS_EPSILON,
 ) -> None:
     del assignments
     epsilon_by_type = _resolve_pectin_epsilon_by_type(epsilon_by_type)
@@ -205,7 +210,7 @@ def write_per_bead_base_itp(
             )
     for i, (btype_i, name_i, eps_i) in enumerate(items):
         for btype_j, name_j, eps_j in items[i:]:
-            cross = _catalog_cross_eps(btype_i, eps_i, btype_j, eps_j)
+            cross = _catalog_cross_eps(btype_i, eps_i, btype_j, eps_j, pct_cross_epsilon)
             lines.append(f"{name_i:>16} {name_j:>16} {1:>3} {PECTIN_SIGMA:>12.6f} {cross:>12.6f}")
 
     output_path.write_text("\n".join(lines) + "\n")
@@ -215,6 +220,7 @@ def append_per_bead_atomtypes(
     base_itp_path: Path,
     assignments: AssignmentMap,
     epsilon_by_type: Dict[str, float] | None = None,
+    pct_cross_epsilon: float | None = DEFAULT_PCT_CROSS_EPSILON,
 ) -> None:
     text = base_itp_path.read_text() if base_itp_path.exists() else ""
     core_nonbond_params = CORE_NONBOND_PARAMS
@@ -227,6 +233,7 @@ def append_per_bead_atomtypes(
         epsilon_by_type=epsilon_by_type,
         core_nonbond_params=core_nonbond_params,
         core_catalog_epsilon=core_catalog_epsilon,
+        pct_cross_epsilon=pct_cross_epsilon,
     )
 
 
