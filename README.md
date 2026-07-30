@@ -21,26 +21,30 @@ This repository contains a streamlined GROMACS system builder for AFM-based cell
 
    - `--out` specifies the output folder.
    - `--epsilon` sets custom epsilon (LJ strength) for the base C/X/P bead pairs. `PP` in `--epsilon` sets the `P/P` (neutral pectin) pair.
+   - `--pr-epsilon`, `--pn-epsilon`, and `--pc-epsilon` set the repulsive, neutral, and crosslink pectin bead interactions.
    - Optionally add `--seed 12345` for reproducible randomization.
    - Optionally add `--multilayer` to generate a 4-layer fiber system (see below).
    - Optionally add `--deform "0 0 0.0001 0 0 0"` to write a deformation tensor into `production.mdp` for z-axis loading.
 
-### Per-Bead Pectin Variant Builder
+### Pectin Variant Builder
 
-For per-bead pectin epsilon assignments in `0.1` steps (`0.1` to `5.0`), use:
+For pectin fibers with a randomized PR/PN/PC bead sequence and three shared pectin interaction strengths, use:
 
 ```bash
-python build_sweep.py --out run_$(date +%s)
+python build_sweep.py --out run_$(date +%s) --pr-epsilon 0.4 --pn-epsilon 1.2 --pc-epsilon 4.8
 ```
 
 Optional flags:
 - `--chains` to set the number of pectin chains to assign (default `1`)
 - `--seed` for reproducible assignments
+- `--pr-epsilon` for repulsive-bead self-interactions
+- `--pn-epsilon` for neutral-bead self-interactions
+- `--pc-epsilon` for crosslink-bead self-interactions
 
 This writes:
-- `sudowoodo_base.itp` (per-bead pectin atomtypes and nonbonded parameters)
-- `sudowoodo_pectin.itp` (copied template)
-- `pectin_assignment_report.txt` (sorted assignment report)
+- `sudowoodo_base.itp` (three shared pectin atomtypes and their nonbonded parameters)
+- `sudowoodo_pectin_*.itp` (one randomized pectin fiber topology per chain)
+- `pectin_assignment_report.txt` (fiber/bead/type assignment report)
 
 3. **Output structure:**  
    - Folder with all required files:
@@ -143,7 +147,7 @@ When `--multilayer` is set:
 
 ## Advanced
 
-- Edit `build_sweep.py` to add more control, config file support, or extend with new bead types.
+- Edit `build_sweep.py` to add more control, config file support, or extend with new bead classes.
 - `build_sweep.py` uses `Union[...]` type-hint syntax where needed for compatibility with Python versions prior to 3.10.
 - All code is pure Python 3 and requires only the standard library (plus numpy, scipy, tqdm for build_system.py).
 

@@ -46,6 +46,12 @@ def get_args():
                    help=f"Crosslinking (PC) beads per pectin fiber (default {build_sweep.PC_PER_FIBER})")
     p.add_argument('--pr', type=int, default=build_sweep.PR_PER_FIBER,
                    help=f"Repulsion (PR) beads per pectin fiber (default {build_sweep.PR_PER_FIBER})")
+    p.add_argument('--pr-epsilon', type=float, default=build_sweep.DEFAULT_EPSILON_BY_TYPE["PR"],
+                   help=f"Repulsive pectin bead self-interaction epsilon (default {build_sweep.DEFAULT_EPSILON_BY_TYPE['PR']})")
+    p.add_argument('--pn-epsilon', type=float, default=build_sweep.DEFAULT_EPSILON_BY_TYPE["PN"],
+                   help=f"Neutral pectin bead self-interaction epsilon (default {build_sweep.DEFAULT_EPSILON_BY_TYPE['PN']})")
+    p.add_argument('--pc-epsilon', type=float, default=build_sweep.DEFAULT_EPSILON_BY_TYPE["PC"],
+                   help=f"Crosslink pectin bead self-interaction epsilon (default {build_sweep.DEFAULT_EPSILON_BY_TYPE['PC']})")
     return p.parse_args() 
 
 def ensure_dir(path):
@@ -106,7 +112,7 @@ def parse_ktheta_values(ktheta_str):
 
 def _is_catalog_type(name):
     """Return True if *name* is a shared pectin catalog atomtype (PctRep/PctNeu/PctXlk)."""
-    return name.startswith('Pct')
+    return name in set(build_sweep.catalog_type_names())
 
 def scale_epsilon_in_itp(itp_path, new_path, epsilon_map):
     re_lj = re.compile(r'^(\s*\w+\s+\w+\s+\d+\s+([0-9eE\.\+\-]+)\s+([0-9eE\.\+\-]+))')
@@ -201,9 +207,23 @@ def generate_itps(args, out_dir, epsilon_map, ktheta_values=None,
                   pc_per_fiber=None, pr_per_fiber=None, seed=0):
     toppar_dir = out_dir / "toppar_custom"
     ensure_dir(toppar_dir)
-    
-    # Base file (LJ parameters only)
-    scale_epsilon_in_itp(Path('toppar_custom/sudowoodo_base.itp'), toppar_dir / "sudowoodo_base.itp", epsilon_map)
+    pectin_eps = build_sweep.pectin_epsilon_by_type(args.pr_epsilon, args.pn_epsilon, args.pc_epsilon)
+
+    core_nonbond_params = []
+    for left, right, func, sigma, epsilon in build_sweep.CORE_NONBOND_PARAMS:
+        core_nonbond_params.append((left, right, func, sigma, epsilon_map.get((left, right), epsilon)))
+    core_catalog_epsilon = {
+        "C": epsilon_map.get(("C", "P"), build_sweep.CORE_CATALOG_EPSILON["C"]),
+        "X": epsilon_map.get(("X", "P"), build_sweep.CORE_CATALOG_EPSILON["X"]),
+        "P": epsilon_map.get(("P", "P"), build_sweep.CORE_CATALOG_EPSILON["P"]),
+    }
+    build_sweep.write_per_bead_base_itp(
+        toppar_dir / "sudowoodo_base.itp",
+        {},
+        epsilon_by_type=pectin_eps,
+        core_nonbond_params=tuple(core_nonbond_params),
+        core_catalog_epsilon=core_catalog_epsilon,
+    )
     
     # Polymer-specific files with potential ktheta modification
     itp_files = [
@@ -217,18 +237,17 @@ def generate_itps(args, out_dir, epsilon_map, ktheta_values=None,
         ktheta_value = ktheta_values.get(polymer_name)
         modify_ktheta_in_itp(Path(src), dst, ktheta_value)
 
-    # Pectin ITP: regenerate with custom bead composition when pc/pr are specified,
-    # otherwise copy from template.
+    # Pectin ITP: always regenerate so bead order stays randomized.
     pectin_dst = toppar_dir / "sudowoodo_pectin.itp"
     _pc = pc_per_fiber if pc_per_fiber is not None else build_sweep.PC_PER_FIBER
     _pr = pr_per_fiber if pr_per_fiber is not None else build_sweep.PR_PER_FIBER
-    if _pc != build_sweep.PC_PER_FIBER or _pr != build_sweep.PR_PER_FIBER:
-        build_sweep.write_default_pectin_itp(pectin_dst, seed=seed,
-                                             pc_per_fiber=_pc, pr_per_fiber=_pr)
-    else:
-        modify_ktheta_in_itp(Path('toppar_custom/sudowoodo_pectin.itp'), pectin_dst,
-                             ktheta_values.get('pectin'))
-        return  # ktheta already applied above, nothing more to do
+    build_sweep.write_default_pectin_itp(
+        pectin_dst,
+        seed=seed,
+        pc_per_fiber=_pc,
+        pr_per_fiber=_pr,
+        epsilon_by_type=pectin_eps,
+    )
 
     # Apply ktheta on top of the freshly generated pectin ITP.
     ktheta_pectin = ktheta_values.get('pectin')
@@ -366,6 +385,7 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
         Epsilon mapping: {eps_map_str}
         Polymer counts: Xylo={args.nxylo}  Pctn={args.npctn}  Cell={args.ncell}
         Seed used: {seed}
+        Pectin epsilons: PR={args.pr_epsilon}  PN={args.pn_epsilon}  PC={args.pc_epsilon}
     """)
     
     if ktheta_values:
@@ -380,7 +400,8 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
     
     write_text(out_dir / "afm_build.log", log_txt)
 
-def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False):
+def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False,
+                     pr_epsilon=None, pn_epsilon=None, pc_epsilon=None):
     """
     Call build_system.py with the given seed inside the output folder.
     """
@@ -394,6 +415,12 @@ def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False):
         cmd.extend(["--ktheta", ktheta_str])
     if multilayer:
         cmd.append("--multilayer")
+    if pr_epsilon is not None:
+        cmd.extend(["--pr-epsilon", str(pr_epsilon)])
+    if pn_epsilon is not None:
+        cmd.extend(["--pn-epsilon", str(pn_epsilon)])
+    if pc_epsilon is not None:
+        cmd.extend(["--pc-epsilon", str(pc_epsilon)])
     
     subprocess.run(cmd, cwd=out_dir, check=True)
 
@@ -413,7 +440,15 @@ def main():
                   pc_per_fiber=args.pc, pr_per_fiber=args.pr, seed=seed)
     write_mdp_files(args, args.out)
     write_run_sh(args, args.out)
-    build_afm_system(seed, args.out, args.ktheta, args.multilayer)
+    build_afm_system(
+        seed,
+        args.out,
+        args.ktheta,
+        args.multilayer,
+        pr_epsilon=args.pr_epsilon,
+        pn_epsilon=args.pn_epsilon,
+        pc_epsilon=args.pc_epsilon,
+    )
     print(f"[ok] Setup complete in {args.out} (seed={seed})")
 
     if ktheta_values:

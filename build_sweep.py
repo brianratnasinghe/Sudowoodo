@@ -96,6 +96,10 @@ def catalog_type_names() -> List[str]:
     return [PECTIN_TYPE_NAMES[bead_type] for bead_type in ("PR", "PN", "PC")]
 
 
+def is_pectin_atomtype(name: str) -> bool:
+    return name.startswith("Pct")
+
+
 def _catalog_items(epsilon_by_type: Dict[str, float]) -> List[Tuple[str, str, float]]:
     return [
         (bead_type, PECTIN_TYPE_NAMES[bead_type], float(epsilon_by_type[bead_type]))
@@ -213,9 +217,54 @@ def append_per_bead_atomtypes(
     epsilon_by_type: Dict[str, float] | None = None,
 ) -> None:
     text = base_itp_path.read_text() if base_itp_path.exists() else ""
-    if all(atomtype in text for atomtype in catalog_type_names()):
-        return
-    write_per_bead_base_itp(base_itp_path, assignments, epsilon_by_type=epsilon_by_type)
+    core_nonbond_params = CORE_NONBOND_PARAMS
+    core_catalog_epsilon = CORE_CATALOG_EPSILON
+    if text:
+        core_nonbond_params, core_catalog_epsilon = parse_existing_base_itp_settings(base_itp_path)
+    write_per_bead_base_itp(
+        base_itp_path,
+        assignments,
+        epsilon_by_type=epsilon_by_type,
+        core_nonbond_params=core_nonbond_params,
+        core_catalog_epsilon=core_catalog_epsilon,
+    )
+
+
+def parse_existing_base_itp_settings(
+    base_itp_path: Path,
+) -> Tuple[Tuple[Tuple[str, str, int, float, float], ...], Dict[str, float]]:
+    text = base_itp_path.read_text()
+    core_pairs: Dict[Tuple[str, str], Tuple[int, float, float]] = {}
+    core_catalog_epsilon = dict(CORE_CATALOG_EPSILON)
+    in_nonbond = False
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(";"):
+            continue
+        if line.startswith("["):
+            in_nonbond = line == "[ nonbond_params ]"
+            continue
+        if not in_nonbond:
+            continue
+        parts = line.split()
+        if len(parts) < 5:
+            continue
+        left, right = parts[0], parts[1]
+        func = int(parts[2])
+        sigma = float(parts[3])
+        epsilon = float(parts[4])
+        if left in {"C", "X", "P"} and right in {"C", "X", "P"}:
+            core_pairs[(left, right)] = (func, sigma, epsilon)
+        elif left in {"C", "X", "P"} and is_pectin_atomtype(right):
+            core_catalog_epsilon[left] = epsilon
+        elif right in {"C", "X", "P"} and is_pectin_atomtype(left):
+            core_catalog_epsilon[right] = epsilon
+
+    parsed_core_nonbond_params = []
+    for left, right, default_func, default_sigma, default_epsilon in CORE_NONBOND_PARAMS:
+        func, sigma, epsilon = core_pairs.get((left, right), (default_func, default_sigma, default_epsilon))
+        parsed_core_nonbond_params.append((left, right, func, sigma, epsilon))
+    return tuple(parsed_core_nonbond_params), core_catalog_epsilon
 
 
 def _write_pectin_itp_lines(mol_name: str, chain_assignments: Dict[int, Assignment]) -> List[str]:

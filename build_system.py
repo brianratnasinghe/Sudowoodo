@@ -129,7 +129,7 @@ class SpatialIndex(object):
 # ----------------------------
 # Build
 # ----------------------------
-def build(seed, multilayer=False):
+def build(seed, multilayer=False, pr_epsilon=None, pn_epsilon=None, pc_epsilon=None):
     np.random.seed(seed)
     print("[INFO] Using random seed: %d" % seed)
     
@@ -280,12 +280,29 @@ def build(seed, multilayer=False):
     toppar_dir.mkdir(exist_ok=True)
     pectin_count = sum(1 for e in chain_specs if e[0] == "Pctn")
     rng_sweep = random.Random(seed)
-    pect_assignments = build_sweep.assign_all_chain_bead_epsilons(pectin_count, rng=rng_sweep)
+    pectin_epsilon_by_type = build_sweep.pectin_epsilon_by_type(
+        build_sweep.DEFAULT_EPSILON_BY_TYPE["PR"] if pr_epsilon is None else pr_epsilon,
+        build_sweep.DEFAULT_EPSILON_BY_TYPE["PN"] if pn_epsilon is None else pn_epsilon,
+        build_sweep.DEFAULT_EPSILON_BY_TYPE["PC"] if pc_epsilon is None else pc_epsilon,
+    )
+    pect_assignments = build_sweep.assign_all_chain_bead_epsilons(
+        pectin_count,
+        rng=rng_sweep,
+        epsilon_by_type=pectin_epsilon_by_type,
+    )
     base_itp = toppar_dir / "sudowoodo_base.itp"
     if base_itp.exists():
-        build_sweep.append_per_bead_atomtypes(base_itp, pect_assignments)
+        build_sweep.append_per_bead_atomtypes(
+            base_itp,
+            pect_assignments,
+            epsilon_by_type=pectin_epsilon_by_type,
+        )
     else:
-        build_sweep.write_per_bead_base_itp(base_itp, pect_assignments)
+        build_sweep.write_per_bead_base_itp(
+            base_itp,
+            pect_assignments,
+            epsilon_by_type=pectin_epsilon_by_type,
+        )
     build_sweep.write_per_fiber_pectin_itps(toppar_dir, pect_assignments)
     print("[INFO] Generated %d per-fiber pectin ITP files" % pectin_count)
 
@@ -312,6 +329,18 @@ if __name__ == "__main__":
                             "Use empty values to keep defaults, e.g. '120,150,180' or ',150,180' or '120,,'")
     parser.add_argument("--multilayer", action="store_true", 
                        help="Generate 4-layer fiber system. Each layer is rotated 180° relative to the previous layer.")
+    parser.add_argument("--pr-epsilon", type=float, default=build_sweep.DEFAULT_EPSILON_BY_TYPE["PR"],
+                       help="Repulsive pectin bead self-interaction epsilon")
+    parser.add_argument("--pn-epsilon", type=float, default=build_sweep.DEFAULT_EPSILON_BY_TYPE["PN"],
+                       help="Neutral pectin bead self-interaction epsilon")
+    parser.add_argument("--pc-epsilon", type=float, default=build_sweep.DEFAULT_EPSILON_BY_TYPE["PC"],
+                       help="Crosslink pectin bead self-interaction epsilon")
     args = parser.parse_args()
     seed = args.seed if args.seed is not None else int(time.time())
-    build(seed, multilayer=args.multilayer)
+    build(
+        seed,
+        multilayer=args.multilayer,
+        pr_epsilon=args.pr_epsilon,
+        pn_epsilon=args.pn_epsilon,
+        pc_epsilon=args.pc_epsilon,
+    )
