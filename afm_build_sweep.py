@@ -315,7 +315,7 @@ def write_mdp_files(args, out_dir):
     def mdp_default_prod(deform=None):
         txt = textwrap.dedent("""\
             integrator               = sd
-            dt                       = 0.1
+            dt                       = 0.05
             nsteps                   = 200000000
             nstcomm                  = 100
             nstxout                  = 0
@@ -341,11 +341,7 @@ def write_mdp_files(args, out_dir):
             tc-grps                  = system
             tau_t                    = 0.05
             ref_t                    = 300
-            Pcoupl                   = parrinello-rahman
-            Pcoupltype               = anisotropic
-            tau_p                    = 12.0
-            compressibility          = 3e-4 3e-4 0 0 0 0
-            ref_p                    = 1 1 1 0 0 0
+            Pcoupl                   = no
             gen_vel                  = no
             gen_temp                 = 300
         """)
