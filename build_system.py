@@ -129,7 +129,8 @@ class SpatialIndex(object):
 # ----------------------------
 # Build
 # ----------------------------
-def build(seed, multilayer=False, pr_epsilon=None, pn_epsilon=None, pc_epsilon=None):
+def build(seed, multilayer=False, pr_epsilon=None, pn_epsilon=None, pc_epsilon=None,
+          pc_per_fiber=None, pr_per_fiber=None):
     np.random.seed(seed)
     print("[INFO] Using random seed: %d" % seed)
     
@@ -289,6 +290,8 @@ def build(seed, multilayer=False, pr_epsilon=None, pn_epsilon=None, pc_epsilon=N
         pectin_count,
         rng=rng_sweep,
         epsilon_by_type=pectin_epsilon_by_type,
+        pc_per_fiber=pc_per_fiber if pc_per_fiber is not None else build_sweep.PC_PER_FIBER,
+        pr_per_fiber=pr_per_fiber if pr_per_fiber is not None else build_sweep.PR_PER_FIBER,
     )
     base_itp = toppar_dir / "sudowoodo_base.itp"
     if base_itp.exists():
@@ -335,6 +338,10 @@ if __name__ == "__main__":
                        help="Neutral pectin bead self-interaction epsilon")
     parser.add_argument("--pc-epsilon", type=float, default=build_sweep.DEFAULT_EPSILON_BY_TYPE["PC"],
                        help="Crosslink pectin bead self-interaction epsilon")
+    parser.add_argument("--pc", type=int, default=None,
+                       help=f"Crosslink (PC) beads per fiber (default {build_sweep.PC_PER_FIBER})")
+    parser.add_argument("--pr", type=int, default=None,
+                       help=f"Repulsion (PR) beads per fiber (default {build_sweep.PR_PER_FIBER})")
     args = parser.parse_args()
     seed = args.seed if args.seed is not None else int(time.time())
     build(
@@ -343,4 +350,6 @@ if __name__ == "__main__":
         pr_epsilon=args.pr_epsilon,
         pn_epsilon=args.pn_epsilon,
         pc_epsilon=args.pc_epsilon,
+        pc_per_fiber=args.pc,
+        pr_per_fiber=args.pr,
     )
