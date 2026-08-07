@@ -1,156 +1,290 @@
 # Sudowoodo AFM Builder
 
-This repository contains a streamlined GROMACS system builder for AFM-based cell wall simulations.
+A GROMACS system builder for AFM-based plant cell-wall simulations. Assembles coarse-grained cellulose, xyloglucan, and pectin chains with configurable Lennard-Jones parameters, then generates all files needed to run energy minimisation, equilibration, and production MD.
 
-## Quick Start
+---
 
-1. **Prepare template files:**  
-   Place the following in your repo root (or update the script to point elsewhere):  
-   - `X.gro` (Xyloglucan chain)
-   - `P.gro` (Pectin chain)
-   - `C.gro` (Cellulose chain)
-   - `toppar_custom/sudowoodo_base.itp`
-   - `toppar_custom/sudowoodo_xyloglucan.itp`
-   - `toppar_custom/sudowoodo_pectin.itp`
-   - `toppar_custom/sudowoodo_cellulose.itp`
+## Repository overview
 
-2. **Run the builder script:**  
-   ```bash
-   python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=2.5,CX=2.5,CP=2.5,XX=2.5,XP=2.5,PP=2.5
-   ```
+| Script | Purpose |
+|---|---|
+| `build_system.py` | Core system builder — places chains, writes GRO/TOP/ITP |
+| `afm_build_sweep.py` | Single-case builder with custom C/X/P epsilon mapping and ktheta control |
+| `build_sweep.py` | Pectin variant builder — per-fiber PR/PN/PC bead assignment |
+| `build_pectin_monomer_sweep.py` | Monomeric pectin epsilon sweep (unbonded single-bead system) |
+| `build_bead_count_sweep.py` | **Bead-count sweep** — full system per (PR, PC) count combination |
+| `run_pectin_epsilon_sweep.py` | PR-epsilon × PC-epsilon grid sweep with SLURM submission |
+| `sweep_eps.py` | Uniform epsilon-scale sweep from an existing run directory |
+| `analyze_monomer_neighbors.py` | Post-processing: nearest-neighbour analysis across monomer-sweep cases |
 
-   - `--out` specifies the output folder.
-   - `--epsilon` sets custom epsilon (LJ strength) for the base C/X/P bead pairs. `PP` in `--epsilon` sets the `P/P` (neutral pectin) pair.
-   - `--pr-epsilon`, `--pn-epsilon`, and `--pc-epsilon` set the repulsive, neutral, and crosslink pectin bead interactions.
-   - Optionally add `--seed 12345` for reproducible randomization.
-   - Optionally add `--multilayer` to generate a 4-layer fiber system (see below).
-   - Optionally add `--deform "0 0 0.0001 0 0 0"` to write a deformation tensor into `production.mdp` for z-axis loading.
+---
 
-### Pectin Variant Builder
+## Prerequisites
 
-For pectin fibers with a randomized PR/PN/PC bead sequence and three shared pectin interaction strengths, use:
+```
+Python ≥ 3.8
+numpy, scipy, tqdm
+GROMACS (gmx in PATH, or pass --gmx /path/to/gmx)
+```
+
+Install Python dependencies:
 
 ```bash
-python build_sweep.py --out run_$(date +%s) --pr-epsilon 0.4 --pn-epsilon 1.2 --pc-epsilon 4.8
+pip install numpy scipy tqdm
+```
+
+---
+
+## Template files required
+
+Place the following files in the directory from which you run any build script:
+
+```
+C.gro                               # Cellulose chain template
+X.gro                               # Xyloglucan chain template
+P.gro                               # Pectin chain template
+toppar_custom/sudowoodo_base.itp
+toppar_custom/sudowoodo_cellulose.itp
+toppar_custom/sudowoodo_xyloglucan.itp
+toppar_custom/sudowoodo_pectin.itp
+```
+
+---
+
+## Workflows
+
+### 1. Single system with custom LJ parameters — `afm_build_sweep.py`
+
+Builds one run directory. You set the epsilon for each coarse-grained bead-pair (C/X/P) and optionally the angular force constants.
+
+```bash
+python afm_build_sweep.py \
+  --out run_$(date +%s) \
+  --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4
 ```
 
 Optional flags:
-- `--chains` to set the number of pectin chains to assign (default `1`)
-- `--seed` for reproducible assignments
-- `--pr-epsilon` for repulsive-bead self-interactions
-- `--pn-epsilon` for neutral-bead self-interactions
-- `--pc-epsilon` for crosslink-bead self-interactions
 
-This writes:
-- `sudowoodo_base.itp` (three shared pectin atomtypes and their nonbonded parameters)
-- `sudowoodo_pectin_*.itp` (one randomized pectin fiber topology per chain)
-- `pectin_assignment_report.txt` (fiber/bead/type assignment report)
+| Flag | Description |
+|---|---|
+| `--seed INT` | Random seed for chain placement |
+| `--ktheta "p,c,x"` | Angular force constants for pectin, cellulose, xyloglucan (use empty field to keep default, e.g. `",150,"`) |
+| `--multilayer` | Stack 4 layers with alternating 180° rotation |
+| `--deform "0 0 e 0 0 0"` | Add a deformation tensor to `production.mdp` for z-axis loading |
+| `--pr-epsilon FLOAT` | Repulsive pectin bead self-epsilon |
+| `--pn-epsilon FLOAT` | Neutral pectin bead self-epsilon |
+| `--pc-epsilon FLOAT` | Crosslink pectin bead self-epsilon |
 
-3. **Output structure:**  
-   - Folder with all required files:
-     - Randomized polymer coordinate files (`X.gro`, `P.gro`, `C.gro`)
-     - Topology (`afm_system.top`)
-     - All required `.itp` files (with custom LJ params)
-     - Ready-to-run MDP files (`EM.mdp`, `EQ.mdp`, `production.mdp`)
-     - `run.sh` script for GROMACS
+#### Deformation runs
 
-### Monomeric Pectin Sweep
+For uniaxial z-axis loading, add `--deform "0 0 0.0001 0 0 0"`. The generated `production.mdp` uses anisotropic Parrinello-Rahman coupling so that x and y relax while z is driven by the imposed strain:
 
-For a sweep with 100 identical unbonded pectin beads and a pectin-pectin epsilon range from `0.1` to `5.0` in `0.1` increments, use:
-
-```bash
-python build_pectin_monomer_sweep.py --out pectin_monomer_sweep
+```ini
+Pcoupl        = parrinello-rahman
+Pcoupltype    = anisotropic
+ref_p         = 1 1 1 0 0 0
+compressibility = 3e-4 3e-4 0 0 0 0
 ```
 
-This creates one case directory per epsilon value, each with:
-- `100` single-bead pectin molecules (no bonds, so they are not fibers)
-- a `production.mdp` configured for a `100 ns` production run
-- a case-specific `P-P` epsilon in `toppar_custom/sudowoodo_base.itp`
+---
 
-After the runs finish, you can analyze the average nearest-neighbor count for each case with:
+### 2. Direct system build — `build_system.py`
+
+The core builder called by all other scripts. Can also be run directly:
+
+```bash
+python build_system.py \
+  --seed 42 \
+  --pr-epsilon 0.4 --pn-epsilon 2.2 --pc-epsilon 4.8 \
+  --pr 5 --pc 2 \
+  --multilayer
+```
+
+| Flag | Description |
+|---|---|
+| `--seed INT` | Random seed |
+| `--pr-epsilon FLOAT` | PR bead self-epsilon (kJ/mol) |
+| `--pn-epsilon FLOAT` | PN bead self-epsilon (kJ/mol) |
+| `--pc-epsilon FLOAT` | PC bead self-epsilon (kJ/mol) |
+| `--pr INT` | PR beads per fiber (default 2) |
+| `--pc INT` | PC beads per fiber (default 2); remainder → PN |
+| `--multilayer` | 4-layer system with Z×4 box |
+
+Outputs are written to the current working directory:
+- `afm_system.gro` / `afm_system.top`
+- `toppar_custom/sudowoodo_base.itp` (pectin atomtypes + nonbonded params)
+- `toppar_custom/sudowoodo_pectin_N.itp` (one per fiber)
+
+---
+
+### 3. Pectin bead-type variant builder — `build_sweep.py`
+
+Generates per-fiber ITP files where each fiber has a randomised sequence of PR (repulsive), PN (neutral), and PC (crosslink) beads. Three shared atomtypes (`PctRep`, `PctNeu`, `PctXlk`) are defined with configurable epsilons.
+
+```bash
+python build_sweep.py \
+  --out toppar_out \
+  --chains 10 \
+  --pr 5 --pc 2 \
+  --pr-epsilon 0.4 --pn-epsilon 2.2 --pc-epsilon 4.8 \
+  --seed 42
+```
+
+Outputs in `--out`:
+- `sudowoodo_base.itp`
+- `sudowoodo_pectin_1.itp … sudowoodo_pectin_N.itp`
+- `pectin_assignment_report.txt`
+
+---
+
+### 4. Bead-count sweep — `build_bead_count_sweep.py`
+
+**Sweeps over the number of PR and PC beads per fiber** while keeping epsilons fixed. Builds a complete full-system simulation directory for every (PR count, PC count) combination. Remaining beads are always assigned to PN so that each fiber totals 30 beads.
+
+```bash
+python build_bead_count_sweep.py \
+  --out sweep_bead_counts \
+  --pr-epsilon 0.4 --pn-epsilon 2.2 --pc-epsilon 4.8 \
+  --pr-max 25 --pc-max 0 \
+  --bead-step 5 \
+  --seed 42
+```
+
+This produces one subdirectory per combination, for example with `--pr-max 25 --pc-max 0`:
+
+```
+sweep_bead_counts/pr00_pc00_pn30/   PR=0,  PC=0, PN=30
+sweep_bead_counts/pr05_pc00_pn25/   PR=5,  PC=0, PN=25
+sweep_bead_counts/pr10_pc00_pn20/   PR=10, PC=0, PN=20
+...
+sweep_bead_counts/pr25_pc00_pn05/   PR=25, PC=0, PN=5
+```
+
+Each subdirectory contains a complete GROMACS run (GRO, TOP, ITP files, MDP files, `run.sh`).
+
+| Flag | Description |
+|---|---|
+| `--pr-max INT` | Maximum PR beads to sweep up to (default 25) |
+| `--pc-max INT` | Maximum PC beads to sweep up to (default 25) |
+| `--bead-step INT` | Increment for PR and PC counts (default 5) |
+| `--pr-epsilon FLOAT` | Fixed PR bead epsilon |
+| `--pn-epsilon FLOAT` | Fixed PN bead epsilon |
+| `--pc-epsilon FLOAT` | Fixed PC bead epsilon |
+| `--seed INT` | Random seed |
+| `--multilayer` | Pass multilayer mode through to `build_system` |
+
+Combinations where PR + PC > 30 are automatically skipped.
+
+---
+
+### 5. PR-epsilon × PC-epsilon grid sweep — `run_pectin_epsilon_sweep.py`
+
+Sweeps over a grid of PR-epsilon and PC-epsilon values, building a run directory for each pair. Optionally submits each case to SLURM.
+
+```bash
+python run_pectin_epsilon_sweep.py \
+  --pr-start 0.1 --pr-stop 1.0 --pr-step 0.1 \
+  --pc-start 2.0 --pc-stop 6.0 --pc-step 1.0 \
+  --out-root ./sweep \
+  --dry-run
+```
+
+Remove `--dry-run` to submit jobs with `sbatch`.
+
+---
+
+### 6. Monomeric pectin epsilon sweep — `build_pectin_monomer_sweep.py`
+
+Creates one case per P-P epsilon value (default 0.1–5.0, step 0.1). Each case contains 100 identical unbonded single-bead pectin molecules and a 100 ns production run. Useful for calibrating the pectin self-interaction epsilon before running fiber systems.
+
+```bash
+python build_pectin_monomer_sweep.py \
+  --out pectin_monomer_sweep \
+  --epsilon-start 0.1 --epsilon-stop 5.0 --epsilon-step 0.1 \
+  --count 100 --prod-ns 100
+```
+
+Case directories are named `pp_eps_0.1`, `pp_eps_0.2`, etc.
+
+---
+
+### 7. Uniform epsilon-scale sweep — `sweep_eps.py`
+
+Copies an existing run directory and scales all epsilons in `sudowoodo_base.itp` by a set of factors. Useful for sensitivity analysis around a known good configuration.
+
+```bash
+python sweep_eps.py \
+  --scales 0.5 1.0 1.5 2.0 \
+  --template-top afm_system.top \
+  --template-gro afm_system.gro \
+  --toppar-dir toppar_custom \
+  --out sweep_eps
+```
+
+---
+
+## Post-processing
+
+### Nearest-neighbour analysis — `analyze_monomer_neighbors.py`
+
+Analyses the monomeric pectin sweep output. For each `pp_eps_*` case directory it reads the last 25 % of frames from `production.xtc` and computes the average number of neighbours within a 1.5 nm cutoff per bead.
 
 ```bash
 cd pectin_monomer_sweep
 python ../analyze_monomer_neighbors.py
 ```
 
-The analysis script lives in the repository root and scans the current working directory for `pp_eps_*` folders.
+Output: `nearest_neighbors_vs_epsilon.png`
 
-By default it:
-- uses a `5.0 nm` cutoff
-- analyzes the last `25%` of frames from `production.xtc`
-- averages the number of neighbors within the cutoff for each bead
-- saves `nearest_neighbors_vs_epsilon.png`
+Tuneable constants at the top of the script:
 
-Adjust the analysis constants at the top of the script to change the cutoff, frame fraction, or file names.
+| Constant | Default | Description |
+|---|---|---|
+| `CUTOFF_NM` | 1.5 | Neighbour cutoff (nm) |
+| `LAST_FRACTION` | 0.25 | Fraction of trajectory to analyse |
+| `CASE_GLOB` | `pp_eps_*` | Glob pattern for case directories |
 
-4. **Run your simulation:**  
-   ```bash
-   cd <your_output_folder>
-   bash run.sh
-   ```
+---
 
-## Deformation Runs
+## Running a simulation
 
-The builder supports adding a `deform` line to `production.mdp` with the `--deform` flag.
-
-Example for uniaxial deformation along the z axis:
+Every case directory produced by the build scripts contains a `run.sh`:
 
 ```bash
-python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --deform "0 0 0.0001 0 0 0"
+cd <case_dir>
+bash run.sh
 ```
 
-The deform tensor follows GROMACS ordering:
+`run.sh` sequentially runs energy minimisation (`EM`), equilibration (`EQ`), and production MD using `gmx grompp` + `gmx mdrun`.
 
-```text
-xx yy zz xy xz yz
-```
+GROMACS parallelism defaults:
+- `--ntmpi 1` / `--ntomp 24` (single MPI rank, 24 OpenMP threads)
 
-For the production run template, deformation is intended along **z**. The generated `production.mdp` uses anisotropic Parrinello-Rahman pressure coupling with the z axis excluded from barostat scaling:
+Override by passing `--ntmpi` and `--ntomp` to the build script.
 
-```ini
-Pcoupl                   = parrinello-rahman
-Pcoupltype               = anisotropic
-tau_p                    = 12.0
-ref_p                    = 1 1 1 0 0 0
-compressibility          = 3e-4 3e-4 0 0 0 0
-```
+---
 
-This means:
-- `deform` drives the z-dimension of the box
-- `x` and `y` remain pressure-coupled and can relax
-- `z` is not barostatted, so the barostat does not fight the imposed strain along the loading axis
+## Multi-layer mode
 
-## Multi-Layer Mode
+Any build script that accepts `--multilayer` stacks four layers of fibers. Each layer occupies its own Z-slice of the box; layers 2 and 4 are rotated 180° around Z relative to layers 1 and 3. The simulation box Z-dimension is automatically set to 4× the single-layer Z extent.
 
-The builder supports creating a 4-layer fiber system using the `--multilayer` flag:
+---
+
+## Testing
 
 ```bash
-# For afm_build_sweep.py
-python afm_build_sweep.py --out run_$(date +%s) --epsilon CC=1.0,CX=0.8,CP=0.7,XX=0.6,XP=0.5,PP=0.4 --multilayer
-
-# Or directly with build_system.py
-python build_system.py --seed 12345 --multilayer
+python -m unittest -v
 ```
 
-When `--multilayer` is set:
-- Four layers of fibers are stacked together with no spacing between layers
-- Each layer contains the same types and numbers of fibers (pectin, cellulose, xyloglucan)
-- Layers 1 and 3 have 0° rotation, while layers 2 and 4 are rotated 180° around the Z-axis
-- The simulation box Z-dimension is automatically expanded by 4x to accommodate all layers
+For focused pectin-variant tests only:
 
-## Notes
+```bash
+python -m unittest -v test_pectin_variant.py
+```
 
-- The builder script currently copies template .gro files—plug in your own randomization for full system assembly.
-- The script will log the random seed and parameters in `afm_build.log`.
-- Update polymer counts with `--nxylo`, `--npctn`, `--ncell`.
-
-## Advanced
-
-- Edit `build_sweep.py` to add more control, config file support, or extend with new bead classes.
-- `build_sweep.py` uses `Union[...]` type-hint syntax where needed for compatibility with Python versions prior to 3.10.
-- All code is pure Python 3 and requires only the standard library (plus numpy, scipy, tqdm for build_system.py).
+---
 
 ## Citation
 
-Please cite the Sudowoodo FF if using in publications.
+Please cite the Sudowoodo force field if you use this repository in a publication.
+
