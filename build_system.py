@@ -130,7 +130,7 @@ class SpatialIndex(object):
 # Build
 # ----------------------------
 def build(seed, multilayer=False, pr_epsilon=None, pn_epsilon=None, pc_epsilon=None,
-          pc_per_fiber=None, pr_per_fiber=None):
+          pc_per_fiber=None, pr_per_fiber=None, src_dir=None):
     np.random.seed(seed)
     print("[INFO] Using random seed: %d" % seed)
     
@@ -158,9 +158,10 @@ def build(seed, multilayer=False, pr_epsilon=None, pn_epsilon=None, pc_epsilon=N
 
     t0 = time.time()
     print("[STEP] Loading templates: C.gro, X.gro, P.gro ...")
-    C_coords = load_chain_gro("C.gro")
-    X_coords = load_chain_gro("X.gro")
-    P_coords = load_chain_gro("P.gro")
+    _src = _Path(src_dir) if src_dir is not None else _Path(".")
+    C_coords = load_chain_gro(str(_src / "C.gro"))
+    X_coords = load_chain_gro(str(_src / "X.gro"))
+    P_coords = load_chain_gro(str(_src / "P.gro"))
 
     systems = []
     chain_specs = []
@@ -279,6 +280,15 @@ def build(seed, multilayer=False, pr_epsilon=None, pn_epsilon=None, pc_epsilon=N
     # Generate per-fiber pectin ITP files and register atomtypes in base ITP
     toppar_dir = _Path("toppar_custom")
     toppar_dir.mkdir(exist_ok=True)
+
+    # Copy static topology files from src_dir if provided
+    if src_dir is not None:
+        import shutil as _shutil
+        _src_toppar = _Path(src_dir) / "toppar_custom"
+        for _static_itp in ["sudowoodo_cellulose.itp", "sudowoodo_xyloglucan.itp"]:
+            _src_itp = _src_toppar / _static_itp
+            if _src_itp.exists():
+                _shutil.copy2(str(_src_itp), str(toppar_dir / _static_itp))
     pectin_count = sum(1 for e in chain_specs if e[0] == "Pctn")
     rng_sweep = random.Random(seed)
     pectin_epsilon_by_type = build_sweep.pectin_epsilon_by_type(

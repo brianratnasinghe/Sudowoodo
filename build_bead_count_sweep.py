@@ -122,6 +122,7 @@ def main() -> None:
                 pc_epsilon=args.pc_epsilon,
                 pc_per_fiber=pc_count,
                 pr_per_fiber=pr_count,
+                src_dir=orig_dir,
             )
         finally:
             os.chdir(orig_dir)
