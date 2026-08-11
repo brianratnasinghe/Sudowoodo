@@ -22,6 +22,7 @@ from pathlib import Path
 
 # Allow importing siblings
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import afm_build_sweep
 import build_sweep
 import build_system
 
@@ -69,6 +70,9 @@ def parse_args() -> argparse.Namespace:
         "--multilayer", action="store_true",
         help="Generate 4-layer fiber system (passed through to build_system.build)",
     )
+    parser.add_argument("--gmx", type=str, default="gmx", help="GROMACS launcher (default: gmx)")
+    parser.add_argument("--ntomp", type=int, default=24, help="Number of OpenMP threads (default: 24)")
+    parser.add_argument("--ntmpi", type=int, default=1, help="Number of MPI ranks (default: 1)")
     return parser.parse_args()
 
 
@@ -127,6 +131,8 @@ def main() -> None:
         finally:
             os.chdir(orig_dir)
 
+        afm_build_sweep.write_mdp_files(args, case_dir)
+        afm_build_sweep.write_run_sh(args, case_dir)
         print(f"[ok] finished {case_dir}")
 
     print(f"\n[DONE] All {len(cases)} cases written to {args.out}")
