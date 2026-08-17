@@ -47,8 +47,8 @@ DEFAULT_DPI = 150
 # Pectin atomtypes are PctRep, PctNeu, PctXlk (see build_sweep.py).
 TYPE_COLOURS = {
     "PctRep": "#e6194b",   # red
-    "PctNeu": "#4363d8",   # blue
-    "PctXlk": "#3cb44b",   # green
+    "PctNeu": "#3cb44b",   # green
+    "PctXlk": "#4363d8",   # blue
 }
 DEFAULT_COLOUR = "#aaaaaa"
 
