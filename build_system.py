@@ -317,6 +317,7 @@ def build(seed, multilayer=False, pr_epsilon=None, pn_epsilon=None, pc_epsilon=N
             epsilon_by_type=pectin_epsilon_by_type,
         )
     build_sweep.write_per_fiber_pectin_itps(toppar_dir, pect_assignments)
+    build_sweep.write_assignment_report(_Path("pectin_assignment_report.txt"), pect_assignments)
     print("[INFO] Generated %d per-fiber pectin ITP files" % pectin_count)
 
     write_combined_top("afm_system.top", chain_specs)
