@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """analyze_last_frames.py — render the last production frame (pectin only) for
-every sweep case directory and write a multi-page PDF.
+every sweep case directory and save each frame as an individual PNG file.
 
-Each page shows a 2-D (X-Y) projection of the pectin bead positions in the
+Each PNG shows a 2-D (X-Y) projection of the pectin bead positions in the
 last frame of that simulation, coloured by bead type (PctRep / PctNeu / PctXlk).
 
 Usage
@@ -14,12 +14,13 @@ Arguments
     --sweep DIR     Parent directory produced by build_bead_count_sweep.py or
                     afm_build_sweep.py.  The script searches one level deep for
                     subdirectories that contain afm_system.gro + production.xtc.
-    --out FILE      Output PDF path (default: last_frames.pdf)
+    --out-dir DIR   Output directory for PNG files (default: last_frames/)
     --topo FILE     Topology filename to look for (default: afm_system.gro)
     --traj FILE     Trajectory filename to look for (default: production.xtc)
     --selection SEL MDAnalysis selection for pectin beads
                     (default: "resname Pctn")
     --marker-size N Scatter plot marker size (default: 6)
+    --dpi N         PNG resolution in dots per inch (default: 150)
 
 Requirements
 ------------
@@ -38,8 +39,9 @@ from pathlib import Path
 DEFAULT_TOPO = "afm_system.gro"
 DEFAULT_TRAJ = "production.xtc"
 DEFAULT_SELECTION = "resname Pctn"
-DEFAULT_OUT = "last_frames.pdf"
+DEFAULT_OUT_DIR = "last_frames"
 DEFAULT_MARKER_SIZE = 6
+DEFAULT_DPI = 150
 
 # Colour map: MDAnalysis atom type → colour.
 # Pectin atomtypes are PctRep, PctNeu, PctXlk (see build_sweep.py).
@@ -60,14 +62,13 @@ def _load_deps():
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-        from matplotlib.backends.backend_pdf import PdfPages
         import MDAnalysis as mda
     except ImportError as exc:
         raise SystemExit(
             "This script requires MDAnalysis and matplotlib.\n"
             "Install with:  pip install MDAnalysis matplotlib"
         ) from exc
-    return mda, plt, PdfPages
+    return mda, plt
 
 
 def _find_cases(sweep_dir: Path, topo: str, traj: str) -> list[Path]:
@@ -139,13 +140,13 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
             "Render the last production frame (pectin only) for every sweep "
-            "case directory and write a multi-page PDF."
+            "case directory and save each frame as an individual PNG file."
         )
     )
     p.add_argument("--sweep", type=Path, required=True,
                    help="Parent sweep directory to search for cases")
-    p.add_argument("--out", type=Path, default=Path(DEFAULT_OUT),
-                   help=f"Output PDF path (default: {DEFAULT_OUT})")
+    p.add_argument("--out-dir", type=Path, default=Path(DEFAULT_OUT_DIR),
+                   help=f"Output directory for PNG files (default: {DEFAULT_OUT_DIR}/)")
     p.add_argument("--topo", default=DEFAULT_TOPO,
                    help=f"Topology filename (default: {DEFAULT_TOPO})")
     p.add_argument("--traj", default=DEFAULT_TRAJ,
@@ -154,6 +155,8 @@ def parse_args() -> argparse.Namespace:
                    help=f"MDAnalysis atom selection (default: '{DEFAULT_SELECTION}')")
     p.add_argument("--marker-size", type=float, default=DEFAULT_MARKER_SIZE,
                    help=f"Scatter marker size (default: {DEFAULT_MARKER_SIZE})")
+    p.add_argument("--dpi", type=int, default=DEFAULT_DPI,
+                   help=f"PNG resolution in dots per inch (default: {DEFAULT_DPI})")
     return p.parse_args()
 
 
@@ -163,7 +166,7 @@ def main() -> None:
     if not args.sweep.is_dir():
         sys.exit(f"Error: sweep directory not found: {args.sweep}")
 
-    mda, plt, PdfPages = _load_deps()
+    mda, plt = _load_deps()
 
     cases = _find_cases(args.sweep, args.topo, args.traj)
     if not cases:
@@ -174,29 +177,34 @@ def main() -> None:
 
     print(f"[INFO] Found {len(cases)} case(s) in {args.sweep}")
 
+    out_dir = args.out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     global DEFAULT_MARKER_SIZE
     DEFAULT_MARKER_SIZE = args.marker_size
 
-    with PdfPages(str(args.out)) as pdf:
-        for case_dir in cases:
-            case_name = case_dir.name
-            print(f"  Processing {case_name} ...", end=" ", flush=True)
-            try:
-                positions, atomtypes, box = _process_case(
-                    case_dir, args.topo, args.traj, args.selection, mda
-                )
-            except Exception as exc:
-                print(f"SKIPPED ({exc})")
-                continue
+    saved = 0
+    for case_dir in cases:
+        case_name = case_dir.name
+        print(f"  Processing {case_name} ...", end=" ", flush=True)
+        try:
+            positions, atomtypes, box = _process_case(
+                case_dir, args.topo, args.traj, args.selection, mda
+            )
+        except Exception as exc:
+            print(f"SKIPPED ({exc})")
+            continue
 
-            fig, ax = plt.subplots(figsize=(8, 6))
-            _render_frame(ax, positions, atomtypes, box, case_name)
-            fig.tight_layout()
-            pdf.savefig(fig)
-            plt.close(fig)
-            print(f"ok  ({len(positions)} pectin beads)")
+        fig, ax = plt.subplots(figsize=(8, 6))
+        _render_frame(ax, positions, atomtypes, box, case_name)
+        fig.tight_layout()
+        out_path = out_dir / f"{case_name}.png"
+        fig.savefig(str(out_path), dpi=args.dpi)
+        plt.close(fig)
+        saved += 1
+        print(f"ok  ({len(positions)} pectin beads) → {out_path}")
 
-    print(f"\n[DONE] PDF written to {args.out}")
+    print(f"\n[DONE] {saved} PNG(s) written to {out_dir}/")
 
 
 if __name__ == "__main__":
