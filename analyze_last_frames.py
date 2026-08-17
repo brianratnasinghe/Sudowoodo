@@ -42,6 +42,7 @@ DEFAULT_SELECTION = "resname Pctn"
 DEFAULT_OUT_DIR = "last_frames"
 DEFAULT_MARKER_SIZE = 6
 DEFAULT_DPI = 150
+DEFAULT_PECTIN_ITP = "toppar_custom/sudowoodo_pectin.itp"
 
 # Colour map: MDAnalysis atom type → colour.
 # Pectin atomtypes are PctRep, PctNeu, PctXlk (see build_sweep.py).
@@ -86,6 +87,33 @@ def _atom_colour(atomtype: str) -> str:
     return TYPE_COLOURS.get(atomtype, DEFAULT_COLOUR)
 
 
+def _parse_itp_atomtypes(itp_path: Path) -> dict[str, str]:
+    """Parse a GROMACS ITP and return {atom_name: atomtype} from the [atoms] section.
+
+    Falls back to an empty dict if the file cannot be read or has no [atoms] section.
+    """
+    name_to_type: dict[str, str] = {}
+    try:
+        in_atoms = False
+        for raw_line in itp_path.read_text().splitlines():
+            line = raw_line.split(";")[0].strip()
+            if not line:
+                continue
+            if line.startswith("["):
+                in_atoms = "atoms" in line.lower()
+                continue
+            if in_atoms:
+                parts = line.split()
+                # ITP atoms line: id  type  resnr  residu  atom  cgnr  charge
+                if len(parts) >= 5:
+                    atomtype = parts[1]
+                    atom_name = parts[4]
+                    name_to_type[atom_name] = atomtype
+    except OSError:
+        pass
+    return name_to_type
+
+
 def _render_frame(ax, positions, atomtypes, box, case_name: str) -> None:
     """Draw a 2-D X-Y scatter of pectin bead positions onto *ax*."""
     if len(positions) == 0:
@@ -127,7 +155,18 @@ def _process_case(case_dir: Path, topo: str, traj: str, selection: str, mda):
     u.trajectory[-1]
     ag = u.select_atoms(selection)
     positions = ag.positions.copy()   # shape (N, 3) in Angstrom
-    atomtypes = list(ag.types)
+
+    # Resolve per-bead atomtypes from the pectin ITP (atom name → atomtype).
+    # GRO files don't carry atomtype info, so ag.types would just return the
+    # element symbol ("P") for all beads.  The ITP stores the correct types
+    # (PctRep / PctNeu / PctXlk).
+    itp_path = case_dir / DEFAULT_PECTIN_ITP
+    name_to_type = _parse_itp_atomtypes(itp_path)
+    if name_to_type:
+        atomtypes = [name_to_type.get(name, name) for name in ag.names]
+    else:
+        atomtypes = list(ag.types)
+
     box = u.dimensions[:3]            # (Lx, Ly, Lz) in Angstrom
     return positions, atomtypes, box
 
