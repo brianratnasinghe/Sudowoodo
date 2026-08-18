@@ -148,6 +148,24 @@ def _render_frame(ax, positions, atomtypes, box, case_name: str) -> None:
                   markerscale=1, framealpha=0.7)
 
 
+def _find_pectin_itp(case_dir: Path) -> Path:
+    """Return a path to a pectin ITP in *case_dir*.
+
+    Prefers the monolithic template ``sudowoodo_pectin.itp``; falls back to
+    the first per-fiber ITP (``sudowoodo_pectin_1.itp``) produced by the new
+    build pipeline.  Returns the template path (possibly non-existent) when
+    neither is found so the caller can handle the missing-file case.
+    """
+    toppar = case_dir / "toppar_custom"
+    template = toppar / "sudowoodo_pectin.itp"
+    if template.exists():
+        return template
+    per_fiber = toppar / "sudowoodo_pectin_1.itp"
+    if per_fiber.exists():
+        return per_fiber
+    return template  # let _parse_itp_atomtypes handle the missing file gracefully
+
+
 def _process_case(case_dir: Path, topo: str, traj: str, selection: str, mda):
     """Load last frame, return (positions, atomtypes, box, case_name)."""
     u = mda.Universe(str(case_dir / topo), str(case_dir / traj))
@@ -160,7 +178,7 @@ def _process_case(case_dir: Path, topo: str, traj: str, selection: str, mda):
     # GRO files don't carry atomtype info, so ag.types would just return the
     # element symbol ("P") for all beads.  The ITP stores the correct types
     # (PctRep / PctNeu / PctXlk).
-    itp_path = case_dir / DEFAULT_PECTIN_ITP
+    itp_path = _find_pectin_itp(case_dir)
     name_to_type = _parse_itp_atomtypes(itp_path)
     if name_to_type:
         atomtypes = [name_to_type.get(name, name) for name in ag.names]
