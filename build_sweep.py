@@ -289,7 +289,8 @@ def _write_pectin_itp_lines(mol_name: str, chain_assignments: Dict[int, Assignme
     ]
     for bead_index in range(1, n_beads + 1):
         atomtype = str(chain_assignments[bead_index]["atomtype"])
-        lines.append(f"  {bead_index:<5} {atomtype:<24} 1      Pctn    P{bead_index:<5} {bead_index:<5} 0")
+        bead_type = str(chain_assignments[bead_index]["bead_type"])
+        lines.append(f"  {bead_index:<5} {atomtype:<24} 1      Pctn    {bead_type:<6} {bead_index:<5} 0")
     lines.extend([
         "",
         "[ bonds ]",

@@ -80,6 +80,29 @@ class TestPectinVariant(unittest.TestCase):
                 itp = (tmppath / f"sudowoodo_pectin_{chain_index}.itp").read_text()
                 self.assertIn(f"Pctn_{chain_index}", itp)
 
+    def test_per_fiber_itp_atom_names_are_bead_types(self):
+        """Atom names in [atoms] section must be PR, PN, or PC (not P1..P30)."""
+        assignments = build_sweep.assign_all_chain_bead_epsilons(2, rng=random.Random(42))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmppath = Path(tmpdir)
+            build_sweep.write_per_fiber_pectin_itps(tmppath, assignments)
+            for chain_index in range(1, 3):
+                itp_text = (tmppath / f"sudowoodo_pectin_{chain_index}.itp").read_text()
+                in_atoms = False
+                for line in itp_text.splitlines():
+                    stripped = line.split(";")[0].strip()
+                    if not stripped:
+                        continue
+                    if stripped.startswith("["):
+                        in_atoms = "atoms" in stripped.lower()
+                        continue
+                    if in_atoms:
+                        parts = stripped.split()
+                        if len(parts) >= 5:
+                            atom_name = parts[4]
+                            self.assertIn(atom_name, {"PR", "PN", "PC"},
+                                          f"Unexpected atom name {atom_name!r} in chain {chain_index}")
+
     def test_per_fiber_itps_use_only_shared_catalog_atomtypes(self):
         assignments = build_sweep.assign_all_chain_bead_epsilons(4, rng=random.Random(77))
         catalog = set(build_sweep.catalog_type_names())
