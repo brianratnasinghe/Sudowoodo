@@ -46,10 +46,16 @@ DEFAULT_PECTIN_ITP = "toppar_custom/sudowoodo_pectin.itp"
 
 # Colour map: MDAnalysis atom type → colour.
 # Pectin atomtypes are PctRep, PctNeu, PctXlk (see build_sweep.py).
+# The short GRO atom-name aliases (PR/PN/PC) are also included so that
+# coloring works directly from the GRO atom names when an ITP lookup is
+# unavailable or does not resolve to a canonical atomtype.
 TYPE_COLOURS = {
     "PctRep": "#e6194b",   # red
     "PctNeu": "#3cb44b",   # green
     "PctXlk": "#4363d8",   # blue
+    "PR": "#e6194b",       # repulsive bead (alias for PctRep)
+    "PN": "#3cb44b",       # neutral bead   (alias for PctNeu)
+    "PC": "#4363d8",       # crosslinking bead (alias for PctXlk)
 }
 DEFAULT_COLOUR = "#aaaaaa"
 
