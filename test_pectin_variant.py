@@ -154,6 +154,15 @@ class TestPectinVariant(unittest.TestCase):
         self.assertRegex(text, r"X\s+PctNeu\s+1\s+1\.250000\s+2\.300000")
         self.assertRegex(text, r"P\s+PctXlk\s+1\s+1\.000000\s+1\.400000")
 
+    def test_pectin_template_gro_atom_names_use_bead_types(self):
+        gro_path = Path(__file__).resolve().parent / "P.gro"
+        lines = gro_path.read_text().splitlines()[2:-1]
+        atom_names = {line[10:15].strip() for line in lines if line.strip()}
+        self.assertTrue(atom_names.issubset({"PR", "PN", "PC"}))
+        self.assertIn("PR", atom_names)
+        self.assertIn("PN", atom_names)
+        self.assertIn("PC", atom_names)
+
 
 if __name__ == "__main__":
     unittest.main()
