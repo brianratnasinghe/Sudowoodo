@@ -27,6 +27,13 @@ Usage examples
       --out-root ./sweep \\
       --seed 42 \\
       --epsilon CC=2.5,CX=2.5,CP=2.5,XX=2.5,XP=2.5,PP=2.5
+
+# Use 5 PR beads and 5 PC beads per pectin strand:
+  python run_pectin_epsilon_sweep.py \\
+      --pr-start 0.2 --pr-stop 0.8 --pr-step 0.2 \\
+      --pc-start 3.0 --pc-stop 5.0 --pc-step 1.0 \\
+      --pr 5 --pc 5 \\
+      --out-root ./sweep
 """
 from __future__ import annotations
 
@@ -177,6 +184,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--pc-start", required=True, help="PC epsilon start value")
     p.add_argument("--pc-stop",  required=True, help="PC epsilon stop value (inclusive)")
     p.add_argument("--pc-step",  required=True, help="PC epsilon step size")
+    # Bead counts per fiber
+    p.add_argument("--pr", type=int, default=build_sweep.PR_PER_FIBER,
+                   help=f"Number of PR (repulsive) beads per pectin strand (default {build_sweep.PR_PER_FIBER})")
+    p.add_argument("--pc", type=int, default=build_sweep.PC_PER_FIBER,
+                   help=f"Number of PC (crosslinking) beads per pectin strand (default {build_sweep.PC_PER_FIBER})")
     # Fixed PN epsilon
     p.add_argument("--pn-epsilon", type=float, default=DEFAULT_PN_EPSILON,
                    help="Fixed PN (neutral) bead epsilon")
@@ -221,6 +233,7 @@ def main() -> None:
         extra.append("--multilayer")
     if args.ktheta:
         extra.extend(["--ktheta", args.ktheta])
+    extra.extend(["--pr", str(args.pr), "--pc", str(args.pc)])
 
     run_dirs: list[Path] = []
 
