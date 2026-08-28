@@ -397,7 +397,8 @@ def write_log(out_dir, seed, args, epsilon_map, ktheta_values=None):
     write_text(out_dir / "afm_build.log", log_txt)
 
 def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False,
-                     pr_epsilon=None, pn_epsilon=None, pc_epsilon=None):
+                     pr_epsilon=None, pn_epsilon=None, pc_epsilon=None,
+                     pr_per_fiber=None, pc_per_fiber=None):
     """
     Call build_system.py with the given seed inside the output folder.
     """
@@ -417,6 +418,10 @@ def build_afm_system(seed, out_dir=None, ktheta_str=None, multilayer=False,
         cmd.extend(["--pn-epsilon", str(pn_epsilon)])
     if pc_epsilon is not None:
         cmd.extend(["--pc-epsilon", str(pc_epsilon)])
+    if pr_per_fiber is not None:
+        cmd.extend(["--pr", str(pr_per_fiber)])
+    if pc_per_fiber is not None:
+        cmd.extend(["--pc", str(pc_per_fiber)])
     
     subprocess.run(cmd, cwd=out_dir, check=True)
 
@@ -444,6 +449,8 @@ def main():
         pr_epsilon=args.pr_epsilon,
         pn_epsilon=args.pn_epsilon,
         pc_epsilon=args.pc_epsilon,
+        pr_per_fiber=args.pr,
+        pc_per_fiber=args.pc,
     )
     print(f"[ok] Setup complete in {args.out} (seed={seed})")
 
