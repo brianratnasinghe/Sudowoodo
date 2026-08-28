@@ -3,40 +3,40 @@
 
 [ moleculetype ]
 ; molname      nrexcl
-  Pctn         1
+  Pctn           1
 
 [ atoms ]
 ; id    type                      resnr  residu  atom   cgnr  charge
-  1     PctRep12                 1      Pctn    P1     1     0
-  2     PctNeu14                 1      Pctn    P2     2     0
-  3     PctNeu11                 1      Pctn    P3     3     0
-  4     PctNeu20                 1      Pctn    P4     4     0
-  5     PctNeu07                 1      Pctn    P5     5     0
-  6     PctXlk09                 1      Pctn    P6     6     0
-  7     PctNeu16                 1      Pctn    P7     7     0
-  8     PctNeu15                 1      Pctn    P8     8     0
-  9     PctNeu17                 1      Pctn    P9     9     0
-  10    PctNeu09                 1      Pctn    P10    10    0
-  11    PctNeu02                 1      Pctn    P11    11    0
-  12    PctNeu18                 1      Pctn    P12    12    0
-  13    PctNeu01                 1      Pctn    P13    13    0
-  14    PctRep03                 1      Pctn    P14    14    0
-  15    PctNeu13                 1      Pctn    P15    15    0
-  16    PctNeu01                 1      Pctn    P16    16    0
-  17    PctNeu20                 1      Pctn    P17    17    0
-  18    PctNeu16                 1      Pctn    P18    18    0
-  19    PctNeu11                 1      Pctn    P19    19    0
-  20    PctNeu08                 1      Pctn    P20    20    0
-  21    PctNeu11                 1      Pctn    P21    21    0
-  22    PctNeu03                 1      Pctn    P22    22    0
-  23    PctNeu07                 1      Pctn    P23    23    0
-  24    PctNeu19                 1      Pctn    P24    24    0
-  25    PctNeu08                 1      Pctn    P25    25    0
-  26    PctXlk04                 1      Pctn    P26    26    0
-  27    PctNeu05                 1      Pctn    P27    27    0
-  28    PctNeu18                 1      Pctn    P28    28    0
-  29    PctNeu15                 1      Pctn    P29    29    0
-  30    PctNeu03                 1      Pctn    P30    30    0
+  1     PctRep                   1      Pctn    PR     1     0
+  2     PctNeu                   1      Pctn    PN     2     0
+  3     PctNeu                   1      Pctn    PN     3     0
+  4     PctNeu                   1      Pctn    PN     4     0
+  5     PctNeu                   1      Pctn    PN     5     0
+  6     PctXlk                   1      Pctn    PC     6     0
+  7     PctNeu                   1      Pctn    PN     7     0
+  8     PctNeu                   1      Pctn    PN     8     0
+  9     PctNeu                   1      Pctn    PN     9     0
+  10    PctNeu                   1      Pctn    PN     10    0
+  11    PctNeu                   1      Pctn    PN     11    0
+  12    PctNeu                   1      Pctn    PN     12    0
+  13    PctNeu                   1      Pctn    PN     13    0
+  14    PctRep                   1      Pctn    PR     14    0
+  15    PctNeu                   1      Pctn    PN     15    0
+  16    PctNeu                   1      Pctn    PN     16    0
+  17    PctNeu                   1      Pctn    PN     17    0
+  18    PctNeu                   1      Pctn    PN     18    0
+  19    PctNeu                   1      Pctn    PN     19    0
+  20    PctNeu                   1      Pctn    PN     20    0
+  21    PctNeu                   1      Pctn    PN     21    0
+  22    PctNeu                   1      Pctn    PN     22    0
+  23    PctNeu                   1      Pctn    PN     23    0
+  24    PctNeu                   1      Pctn    PN     24    0
+  25    PctNeu                   1      Pctn    PN     25    0
+  26    PctXlk                   1      Pctn    PC     26    0
+  27    PctNeu                   1      Pctn    PN     27    0
+  28    PctNeu                   1      Pctn    PN     28    0
+  29    PctNeu                   1      Pctn    PN     29    0
+  30    PctNeu                   1      Pctn    PN     30    0
 
 [ bonds ]
 ;  i    j      funct   length  force.c.
